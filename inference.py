@@ -6,7 +6,6 @@ import argparse
 import json
 import os
 import re
-import sys
 import textwrap
 from typing import Any
 
@@ -180,17 +179,13 @@ def _build_openai_client() -> tuple[OpenAI, str]:
     api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY") or os.getenv("API_KEY")
     model_name = os.getenv("MODEL_NAME")
     if not api_key:
-        print(
-            "ERROR: No API key found. Set HF_TOKEN (or OPENAI_API_KEY / API_KEY) before running.",
-            file=sys.stderr,
+        raise RuntimeError(
+            "No API key found. Set HF_TOKEN (or OPENAI_API_KEY / API_KEY) before running."
         )
-        sys.exit(1)
     if not model_name:
-        print(
-            "ERROR: MODEL_NAME environment variable is not set.",
-            file=sys.stderr,
+        raise RuntimeError(
+            "MODEL_NAME environment variable is not set."
         )
-        sys.exit(1)
     return OpenAI(base_url=api_base_url, api_key=api_key), model_name
 
 
@@ -208,8 +203,16 @@ def run(policy: str) -> dict[str, Any]:
     env_client, environment_target = _build_env_client()
     client = None
     model_name = None
+    effective_policy = policy
+    warnings: list[str] = []
     if policy == "llm":
-        client, model_name = _build_openai_client()
+        try:
+            client, model_name = _build_openai_client()
+        except RuntimeError as exc:
+            effective_policy = "heuristic"
+            warnings.append(
+                f"LLM configuration unavailable ({exc}); falling back to heuristic baseline."
+            )
 
     summaries: list[TaskRunSummary] = []
     try:
@@ -217,7 +220,18 @@ def run(policy: str) -> dict[str, Any]:
             observation = env_client.reset(task_id=task_id, seed=DEFAULT_ENV_SEED).observation
             done = False
             while not done:
-                action = _heuristic_action(observation) if policy == "heuristic" else _llm_action(client, model_name, observation)
+                if effective_policy == "heuristic":
+                    action = _heuristic_action(observation)
+                else:
+                    try:
+                        action = _llm_action(client, model_name, observation)
+                    except Exception as exc:
+                        warnings.append(
+                            f"LLM action failed on task {task_id} step {observation.current_step}; "
+                            f"falling back to heuristic action ({type(exc).__name__})."
+                        )
+                        effective_policy = "heuristic"
+                        action = _heuristic_action(observation)
                 step = env_client.step(action)
                 observation = step.observation
                 done = step.done
@@ -243,11 +257,13 @@ def run(policy: str) -> dict[str, Any]:
     average_score = round(sum(summary.score for summary in summaries) / len(summaries), 4)
     return {
         "policy": policy,
+        "effective_policy": effective_policy,
         "model_name": model_name,
         "environment_target": environment_target,
         "seed": DEFAULT_ENV_SEED,
         "task_results": [summary.model_dump(mode="json") for summary in summaries],
         "average_score": average_score,
+        "warnings": warnings,
     }
 
 
