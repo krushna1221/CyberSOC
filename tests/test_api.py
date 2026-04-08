@@ -97,3 +97,13 @@ def test_invalid_action_target_is_penalized_without_crashing() -> None:
     assert payload["reward"]["value"] < 0
     assert payload["info"]["penalties"]["invalid_target"] < 0
     assert payload["observation"]["last_action_result"]["success"] is False
+
+
+def test_reset_post_without_body_defaults_successfully() -> None:
+    client = TestClient(app)
+    response = client.post("/reset")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["session_id"]
+    assert payload["task"]["task_id"] == "alert-triage-easy"
+    assert payload["observation"]["task_id"] == "alert-triage-easy"

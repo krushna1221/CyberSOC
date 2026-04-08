@@ -10,7 +10,7 @@ from threading import Lock
 from uuid import uuid4
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -175,7 +175,7 @@ def reset_get(
 def reset_post(
     request: Request,
     response: Response,
-    payload: ResetRequest,
+    payload: ResetRequest = Body(default_factory=ResetRequest),
     session_id: str | None = Query(default=None),
 ) -> ResetResponse:
     resolved_session_id, env = _session_env(request, session_id, create=True)
