@@ -1,0 +1,317 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autonomous CyberSOC OpenEnv++</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/soc.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<!-- Boot screen -->
+<div id="boot-screen">
+  <div class="boot-inner">
+    <div class="boot-logo">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+        <polygon points="40,4 76,62 4,62" stroke="#00e5ff" stroke-width="2" fill="none" opacity="0.8"/>
+        <polygon points="40,16 65,58 15,58" stroke="#00e5ff" stroke-width="1" fill="none" opacity="0.4"/>
+        <circle cx="40" cy="42" r="8" stroke="#00e5ff" stroke-width="1.5" fill="rgba(0,229,255,0.1)"/>
+        <line x1="40" y1="4" x2="40" y2="34" stroke="#00e5ff" stroke-width="1" opacity="0.6"/>
+      </svg>
+    </div>
+    <div class="boot-title">CYBERSOC OPENENV++</div>
+    <div class="boot-subtitle">AUTONOMOUS DEFENSE OPERATIONS SYSTEM</div>
+    <div class="boot-progress">
+      <div class="boot-bar" id="boot-bar"></div>
+    </div>
+    <div class="boot-status" id="boot-status">INITIALIZING NEURAL THREAT MATRIX...</div>
+  </div>
+</div>
+
+<!-- Main Dashboard -->
+<div id="app" class="hidden">
+
+  <!-- Header -->
+  <header class="hud-header">
+    <div class="header-left">
+      <div class="logo-mark">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+          <polygon points="18,2 34,28 2,28" stroke="#00e5ff" stroke-width="1.5" fill="none"/>
+          <circle cx="18" cy="20" r="5" stroke="#00e5ff" stroke-width="1" fill="rgba(0,229,255,0.15)"/>
+        </svg>
+      </div>
+      <div class="header-brand">
+        <span class="brand-main">CYBERSOC</span>
+        <span class="brand-sub">OPENENV++ | AUTONOMOUS DEFENSE</span>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="threat-ticker" id="threat-ticker">
+        <span class="ticker-label">THREAT LEVEL</span>
+        <span class="ticker-value" id="ticker-threat">--</span>
+      </div>
+      <div class="system-clock" id="sys-clock">00:00:00</div>
+      <div class="connection-status" id="conn-status">
+        <span class="conn-dot"></span>
+        <span>CONNECTED</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-kpi">
+        <span class="kpi-label">STEP</span>
+        <span class="kpi-val" id="h-step">0</span>
+      </div>
+      <div class="header-kpi">
+        <span class="kpi-label">REWARD</span>
+        <span class="kpi-val" id="h-reward">0.00</span>
+      </div>
+      <div class="header-kpi">
+        <span class="kpi-label">EPISODE</span>
+        <span class="kpi-val" id="h-episode">1</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <main class="soc-grid">
+
+    <!-- LEFT COLUMN -->
+    <aside class="col-left">
+
+      <!-- Task / Reset Control -->
+      <section class="panel panel-control">
+        <div class="panel-header">
+          <span class="panel-icon">[]</span>
+          <span>MISSION CONTROL</span>
+          <span class="panel-badge" id="task-badge">IDLE</span>
+        </div>
+        <div class="panel-body">
+          <div class="field-group">
+            <label class="field-label">TASK SCENARIO</label>
+            <select id="task-select" class="cyber-select">
+              <option value="">-- SELECT MISSION --</option>
+              <option value="apt_hunt">APT Hunt</option>
+              <option value="ransomware_response">Ransomware Response</option>
+              <option value="insider_threat">Insider Threat</option>
+              <option value="ddos_mitigation">DDoS Mitigation</option>
+              <option value="data_exfil">Data Exfiltration</option>
+            </select>
+          </div>
+          <button class="cyber-btn btn-reset" id="btn-reset">
+            <span class="btn-icon">R</span>
+            <span>INITIALIZE MISSION</span>
+          </button>
+          <button class="cyber-btn btn-step" id="btn-step">
+            <span class="btn-icon">></span>
+            <span>EXECUTE STEP</span>
+          </button>
+          <div class="episode-progress">
+            <div class="ep-label">
+              <span>PROGRESS</span>
+              <span id="ep-pct">0%</span>
+            </div>
+            <div class="ep-bar">
+              <div class="ep-fill" id="ep-fill" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KPI Cards -->
+      <section class="panel panel-kpi">
+        <div class="panel-header">
+          <span class="panel-icon">*</span>
+          <span>THREAT MATRIX</span>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card kpi-threat" id="kpi-threat">
+            <div class="kpi-card-label">THREAT LEVEL</div>
+            <div class="kpi-card-val" id="kv-threat">--</div>
+            <div class="kpi-card-bar"><div class="kpi-bar-fill" id="kb-threat"></div></div>
+          </div>
+          <div class="kpi-card kpi-compromised" id="kpi-compromised">
+            <div class="kpi-card-label">COMPROMISED</div>
+            <div class="kpi-card-val" id="kv-compromised">0</div>
+            <div class="kpi-ring" id="kr-compromised"></div>
+          </div>
+          <div class="kpi-card kpi-contained" id="kpi-contained">
+            <div class="kpi-card-label">CONTAINED</div>
+            <div class="kpi-card-val" id="kv-contained">0</div>
+            <div class="kpi-ring" id="kr-contained"></div>
+          </div>
+          <div class="kpi-card kpi-reward" id="kpi-reward">
+            <div class="kpi-card-label">CUMULATIVE REWARD</div>
+            <div class="kpi-card-val" id="kv-reward">0.00</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alert Queue -->
+      <section class="panel panel-alerts">
+        <div class="panel-header">
+          <span class="panel-icon">!</span>
+          <span>ALERT QUEUE</span>
+          <span class="panel-badge critical" id="alert-count">0</span>
+        </div>
+        <div class="alert-list" id="alert-list">
+          <div class="empty-state">
+            <div class="empty-icon">O</div>
+            <div>NO ACTIVE ALERTS</div>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- CENTER COLUMN -->
+    <section class="col-center">
+
+      <!-- 3D Network Visualization -->
+      <div class="viz-container" id="viz-container">
+        <canvas id="three-canvas"></canvas>
+        <div class="viz-overlay">
+          <div class="radar-ring r1"></div>
+          <div class="radar-ring r2"></div>
+          <div class="radar-ring r3"></div>
+          <div class="radar-sweep"></div>
+          <div class="scan-line"></div>
+        </div>
+        <div class="viz-hud-tl">
+          <div class="viz-hud-label">NETWORK TOPOLOGY</div>
+          <div class="viz-hud-val" id="viz-node-count">0 NODES</div>
+        </div>
+        <div class="viz-hud-tr">
+          <div class="viz-hud-label">THREAT VECTORS</div>
+          <div class="viz-hud-val critical" id="viz-threat-count">0 ACTIVE</div>
+        </div>
+        <div class="viz-hud-br">
+          <div class="viz-hud-label">SCAN FREQ</div>
+          <div class="viz-hud-val">2.4 GHz</div>
+        </div>
+        <div class="node-tooltip" id="node-tooltip">
+          <div class="tt-name" id="tt-name">NODE</div>
+          <div class="tt-status" id="tt-status">NOMINAL</div>
+          <div class="tt-actions">
+            <button class="tt-btn" onclick="prefillAction('isolate_node')">ISOLATE</button>
+            <button class="tt-btn" onclick="prefillAction('patch_system')">PATCH</button>
+            <button class="tt-btn" onclick="prefillAction('request_forensics')">FORENSICS</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Panel -->
+      <section class="panel panel-action">
+        <div class="panel-header">
+          <span class="panel-icon">+</span>
+          <span>ACTION DISPATCH</span>
+          <span class="panel-badge success" id="last-action-badge">READY</span>
+        </div>
+        <div class="panel-body action-body">
+          <div class="action-grid">
+            <div class="field-group">
+              <label class="field-label">ACTION TYPE</label>
+              <select id="action-type" class="cyber-select" onchange="onActionTypeChange()">
+                <option value="noop">noop</option>
+                <option value="triage_alert">triage_alert</option>
+                <option value="isolate_node">isolate_node</option>
+                <option value="patch_system">patch_system</option>
+                <option value="block_indicator">block_indicator</option>
+                <option value="request_forensics">request_forensics</option>
+                <option value="escalate_incident">escalate_incident</option>
+                <option value="ignore_alert">ignore_alert</option>
+              </select>
+            </div>
+            <div class="field-group" id="field-target">
+              <label class="field-label">TARGET NODE / ALERT</label>
+              <input id="action-target" type="text" class="cyber-input" placeholder="node_id or alert_id" />
+            </div>
+            <div class="field-group" id="field-params">
+              <label class="field-label">PARAMETERS (JSON)</label>
+              <input id="action-params" type="text" class="cyber-input" placeholder='{"key": "value"}' />
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button class="cyber-btn btn-dispatch" id="btn-dispatch" onclick="dispatchAction()">
+              <span class="btn-icon">!</span>
+              <span>DISPATCH ACTION</span>
+            </button>
+            <button class="cyber-btn btn-observe" onclick="fetchObservation()">
+              <span class="btn-icon">O</span>
+              <span>OBSERVE</span>
+            </button>
+          </div>
+          <div class="action-result" id="action-result"></div>
+        </div>
+      </section>
+
+    </section>
+
+    <!-- RIGHT COLUMN -->
+    <aside class="col-right">
+
+      <!-- Live Evidence Log -->
+      <section class="panel panel-log">
+        <div class="panel-header">
+          <span class="panel-icon">></span>
+          <span>EVIDENCE STREAM</span>
+          <div class="live-dot"></div>
+        </div>
+        <div class="log-terminal" id="log-terminal">
+          <div class="log-entry log-system">
+            <span class="log-time">--:--:--</span>
+            <span class="log-msg">SYSTEM READY. AWAITING MISSION INITIALIZATION.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action History -->
+      <section class="panel panel-history">
+        <div class="panel-header">
+          <span class="panel-icon">#</span>
+          <span>EPISODE TIMELINE</span>
+        </div>
+        <div class="history-list" id="history-list">
+          <div class="empty-state">
+            <div class="empty-icon">O</div>
+            <div>NO ACTIONS RECORDED</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Raw State Debug -->
+      <section class="panel panel-debug">
+        <div class="panel-header">
+          <span class="panel-icon">&lt;&gt;</span>
+          <span>RAW STATE / OBSERVATION</span>
+          <button class="panel-toggle" id="debug-toggle" onclick="toggleDebug()">EXPAND</button>
+        </div>
+        <div class="debug-body collapsed" id="debug-body">
+          <div class="debug-tabs">
+            <button class="dtab active" onclick="switchDebugTab('state')">STATE</button>
+            <button class="dtab" onclick="switchDebugTab('obs')">OBSERVATION</button>
+          </div>
+          <pre class="debug-pre" id="debug-state">// Awaiting data...</pre>
+          <pre class="debug-pre hidden" id="debug-obs">// Awaiting data...</pre>
+        </div>
+      </section>
+
+    </aside>
+  </main>
+
+  <!-- Ambient particles canvas -->
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- Notification toast -->
+  <div id="toast-container"></div>
+
+</div>
+
+<!-- Action flash overlay -->
+<div id="action-flash" class="action-flash"></div>
+
+<script src="/assets/soc.js"></script>
+</body>
+</html>

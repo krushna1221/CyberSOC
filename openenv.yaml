@@ -1,0 +1,26 @@
+spec_version: "1"
+name: cybersoc_openenv
+version: "0.2.0"
+description: Deterministic SOC workflow environment with task graders, session-isolated HTTP APIs, and a frontend dashboard.
+author: CyberSOC-OpenEnv
+license: Apache-2.0
+type: space
+runtime: fastapi
+app: server.app:app
+entrypoint: server.app:main
+port: 8000
+action: CyberSOCAction
+observation: CyberSOCObservation
+reward: CyberSOCReward
+state: CyberSOCState
+tags:
+  - openenv
+  - cybersecurity
+  - soc
+tasks:
+  - id: alert-triage-easy
+    difficulty: easy
+  - id: incident-containment-medium
+    difficulty: medium
+  - id: soc-optimization-hard
+    difficulty: hard
