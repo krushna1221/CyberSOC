@@ -64,6 +64,8 @@ class CyberSOCEnvironment:
 
     def reset(self, task_id: str | None = None, seed: int | None = None) -> CyberSOCObservation:
         if task_id is not None:
+            if task_id not in SCENARIOS:
+                raise KeyError(f"Unknown task_id: {task_id}")
             self._scenario = SCENARIOS[task_id]
         self._seed = 0 if seed is None else seed
         self._episode_id = f"{self._scenario.task_id}-{self._seed}-{uuid4().hex}"
@@ -155,7 +157,10 @@ class CyberSOCEnvironment:
     def observation(self) -> CyberSOCObservation:
         return self._build_observation()
 
-    def step(self, action: CyberSOCAction | dict[str, Any]) -> StepResponse:
+    def step(self, action: CyberSOCAction | dict[str, Any]) -> tuple[CyberSOCObservation, CyberSOCReward, bool, StepInfo]:
+        return self.step_response(action).as_tuple()
+
+    def step_response(self, action: CyberSOCAction | dict[str, Any]) -> StepResponse:
         typed_action = CyberSOCAction.model_validate(action)
         if self._done:
             reward = CyberSOCReward(
@@ -190,6 +195,11 @@ class CyberSOCEnvironment:
         components.update(action_components)
         penalties.update(action_penalties)
         notes.extend(action_notes)
+
+        if self._is_repeated_action(typed_action):
+            components["repeat_action"] = -0.08
+            penalties["repeat_action"] = -0.08
+            notes.append("Repeated identical action reduced analyst efficiency.")
 
         damage_delta = self._apply_background_damage()
         if damage_delta:
@@ -260,7 +270,15 @@ class CyberSOCEnvironment:
             components["action_cost"] = penalties["action_cost"]
 
         if action.action_type == ActionType.TRIAGE_ALERT:
-            alert = self._known_alerts[action.alert_id or ""]
+            alert = self._known_alerts.get(action.alert_id or "")
+            if alert is None:
+                return self._invalid_action(
+                    action,
+                    components,
+                    penalties,
+                    notes,
+                    f"Unknown alert id: {action.alert_id}",
+                )
             expected = self._scenario.expected_triage.get(alert.alert_id)
             self._triage_decisions[alert.alert_id] = action.classification.value
             if expected == action.classification:
@@ -289,9 +307,18 @@ class CyberSOCEnvironment:
             )
 
         if action.action_type == ActionType.IGNORE_ALERT:
-            alert = self._known_alerts[action.alert_id or ""]
+            alert = self._known_alerts.get(action.alert_id or "")
+            if alert is None:
+                return self._invalid_action(
+                    action,
+                    components,
+                    penalties,
+                    notes,
+                    f"Unknown alert id: {action.alert_id}",
+                )
             self._ignored_alerts.add(alert.alert_id)
-            if self._scenario.expected_triage.get(alert.alert_id).value == "true_positive":
+            expected_label = self._scenario.expected_triage.get(alert.alert_id)
+            if expected_label is not None and expected_label.value == "true_positive":
                 self._bad_action_count += 1
                 components["ignored_true_positive"] = -0.20
                 penalties["ignored_true_positive"] = -0.20
@@ -317,7 +344,10 @@ class CyberSOCEnvironment:
             )
 
         if action.action_type == ActionType.REQUEST_FORENSICS:
-            node_id = self._resolve_node(action)
+            try:
+                node_id = self._resolve_node(action)
+            except (KeyError, ValueError) as exc:
+                return self._invalid_action(action, components, penalties, notes, str(exc))
             revealed = self._reveal_logs(self._scenario.forensics_logs.get(node_id, ()))
             if revealed:
                 components["forensics_value"] = 0.08
@@ -344,7 +374,10 @@ class CyberSOCEnvironment:
             )
 
         if action.action_type == ActionType.ISOLATE_NODE:
-            node_id = self._resolve_node(action)
+            try:
+                node_id = self._resolve_node(action)
+            except (KeyError, ValueError) as exc:
+                return self._invalid_action(action, components, penalties, notes, str(exc))
             self._isolated_nodes.add(node_id)
             disruption_penalty = round(-0.03 * self._node(node_id).criticality, 4)
             components["business_disruption"] = disruption_penalty
@@ -376,7 +409,10 @@ class CyberSOCEnvironment:
             )
 
         if action.action_type == ActionType.PATCH_SYSTEM:
-            node_id = self._resolve_node(action)
+            try:
+                node_id = self._resolve_node(action)
+            except (KeyError, ValueError) as exc:
+                return self._invalid_action(action, components, penalties, notes, str(exc))
             self._patched_nodes.add(node_id)
             if node_id in self._compromised_nodes and node_id in self._isolated_nodes:
                 self._contained_nodes.add(node_id)
@@ -436,7 +472,10 @@ class CyberSOCEnvironment:
             )
 
         if action.action_type == ActionType.ESCALATE_INCIDENT:
-            node_id = self._resolve_node(action)
+            try:
+                node_id = self._resolve_node(action)
+            except (KeyError, ValueError) as exc:
+                return self._invalid_action(action, components, penalties, notes, str(exc))
             if not self._incident_escalated:
                 self._incident_escalated = True
                 self._escalation_step = self._step_count
@@ -474,6 +513,31 @@ class CyberSOCEnvironment:
                 summary="No-op recorded.",
                 success=False,
                 impact="Attacker freedom of movement remains unchanged.",
+                visible_changes=[],
+            ),
+            components,
+            penalties,
+            notes,
+        )
+
+    def _invalid_action(
+        self,
+        action: CyberSOCAction,
+        components: dict[str, float],
+        penalties: dict[str, float],
+        notes: list[str],
+        reason: str,
+    ) -> tuple[ActionFeedback, dict[str, float], dict[str, float], list[str]]:
+        self._bad_action_count += 1
+        components["invalid_target"] = -0.22
+        penalties["invalid_target"] = -0.22
+        notes.append(reason)
+        return (
+            ActionFeedback(
+                action_type=action.action_type,
+                summary="Action rejected due to an invalid target.",
+                success=False,
+                impact="The command had no defensive effect because the referenced target does not exist in this episode.",
                 visible_changes=[],
             ),
             components,
@@ -736,13 +800,29 @@ class CyberSOCEnvironment:
 
     def _resolve_node(self, action: CyberSOCAction) -> str:
         if action.node_id:
+            self._node(action.node_id)
             return action.node_id
         if action.alert_id:
-            return self._known_alerts[action.alert_id].node_id
+            alert = self._known_alerts.get(action.alert_id)
+            if alert is None:
+                raise KeyError(f"Unknown alert id: {action.alert_id}")
+            return alert.node_id
         raise ValueError("Action does not resolve to a node.")
 
     def _action_target(self, action: CyberSOCAction) -> str | None:
         return action.node_id or action.alert_id or action.indicator
+
+    def _is_repeated_action(self, action: CyberSOCAction) -> bool:
+        previous = self._last_action
+        if previous is None:
+            return False
+        return (
+            previous.action_type == action.action_type
+            and previous.alert_id == action.alert_id
+            and previous.node_id == action.node_id
+            and previous.indicator == action.indicator
+            and previous.classification == action.classification
+        )
 
     def _node(self, node_id: str) -> NodeSpec:
         for node in self._scenario.nodes:

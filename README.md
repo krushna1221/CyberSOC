@@ -3,7 +3,7 @@ title: Autonomous CyberSOC OpenEnv++
 colorFrom: red
 colorTo: yellow
 sdk: docker
-app_port: 8000
+app_port: 7860
 tags:
   - openenv
   - cybersecurity
@@ -106,7 +106,7 @@ The agent does not get the full internal compromise graph directly. Hidden state
 
 ### Reward Design
 
-Rewards are dense rather than sparse. The environment returns positive signal for useful triage, containment, patching, blocking, and forensic actions, and penalizes delay, wasted actions, bad triage, attacker spread, and accumulated damage.
+Rewards are dense rather than sparse. The environment returns positive signal for useful triage, containment, patching, blocking, and forensic actions, and penalizes delay, wasted actions, repeated identical actions, bad triage, attacker spread, and accumulated damage.
 
 ## Technical Architecture
 
@@ -140,7 +140,7 @@ flowchart LR
 2. FastAPI creates or reuses a session-isolated `CyberSOCEnvironment`.
 3. The environment returns the initial typed observation.
 4. The agent or UI sends a typed action to `/step`.
-5. The environment validates the action, applies state transitions, advances attacker logic, computes dense reward, and checks terminal conditions.
+5. The environment validates the action, applies state transitions, advances attacker logic, computes dense reward with progress shaping and repeated-action penalties, and checks terminal conditions.
 6. At episode end, the final state is scored by deterministic task-specific graders.
 
 ## Worked Example
@@ -233,20 +233,20 @@ python -m pytest -q -p no:cacheprovider
 Run the app:
 
 ```bash
-python -m server.app --host 0.0.0.0 --port 8000
+python -m server.app --host 0.0.0.0 --port 7860
 ```
 
 Or use the console script:
 
 ```bash
-server --host 0.0.0.0 --port 8000
+server --host 0.0.0.0 --port 7860
 ```
 
 ## Docker
 
 ```bash
 docker build -t cybersoc-openenv .
-docker run --rm -p 8000:8000 cybersoc-openenv
+docker run --rm -p 7860:7860 cybersoc-openenv
 ```
 
 ## Hugging Face Spaces
@@ -262,7 +262,7 @@ Environment settings:
 Key metadata:
 
 - `sdk: docker` is declared in this README front matter
-- `app_port: 8000` matches the FastAPI service
+- `app_port: 7860` matches the FastAPI service
 - `openenv.yaml` points to `server.app:app`
 
 ## Baseline Inference

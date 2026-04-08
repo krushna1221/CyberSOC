@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from collections import OrderedDict
+import os
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -23,7 +24,9 @@ from cybersoc_openenv.models import (
     RootStatus,
     StepResponse,
     TaskCatalog,
+    TaskDefinitionView,
 )
+from cybersoc_openenv.scenarios import SCENARIOS
 
 
 SESSION_COOKIE_NAME = "cybersoc_session"
@@ -33,7 +36,7 @@ SESSION_MAX_AGE_SECONDS = 60 * 60 * 24
 class SessionStore:
     """Bounded in-memory session store for per-user environments."""
 
-    def __init__(self, max_sessions: int = 64) -> None:
+    def __init__(self, max_sessions: int = 256) -> None:
         self._lock = Lock()
         self._max_sessions = max_sessions
         self._sessions: OrderedDict[str, CyberSOCEnvironment] = OrderedDict()
@@ -98,7 +101,11 @@ def _session_env(request: Request, session_id: str | None, create: bool = False)
 
 
 def _reset_response(session_id: str, env: CyberSOCEnvironment, task_id: str | None = None, seed: int | None = None) -> ResetResponse:
-    observation = env.reset(task_id=task_id, seed=seed)
+    try:
+        observation = env.reset(task_id=task_id, seed=seed)
+    except KeyError as exc:
+        message = exc.args[0] if exc.args else "Unknown task id."
+        raise HTTPException(status_code=404, detail=str(message)) from exc
     return ResetResponse(
         session_id=session_id,
         observation=observation,
@@ -108,15 +115,15 @@ def _reset_response(session_id: str, env: CyberSOCEnvironment, task_id: str | No
     )
 
 
+def _task_catalog() -> list[TaskDefinitionView]:
+    env = CyberSOCEnvironment()
+    return [env.task_definition(task_id) for task_id in SCENARIOS]
+
+
 @app.get("/", include_in_schema=False)
 def root(
-    request: Request,
-    session_id: str | None = Query(default=None),
 ) -> FileResponse:
-    resolved_session_id, _ = _session_env(request, session_id, create=True)
-    response = FileResponse(STATIC_DIR / "cybersoc.html")
-    _bind_session(response, resolved_session_id)
-    return response
+    return FileResponse(STATIC_DIR / "cybersoc.html")
 
 
 @app.get("/api/status", response_model=RootStatus)
@@ -125,15 +132,18 @@ def api_status(
     response: Response,
     session_id: str | None = Query(default=None),
 ) -> RootStatus:
-    resolved_session_id, env = _session_env(request, session_id, create=True)
-    _bind_session(response, resolved_session_id)
+    resolved_session_id = _requested_session_id(request, session_id)
+    session = SESSION_STORE.get(resolved_session_id)
+    env = session[1] if session is not None else None
+    if session is not None:
+        _bind_session(response, session[0])
     return RootStatus(
         name="Autonomous CyberSOC OpenEnv++",
         version="0.2.0",
         status="ok",
-        session_id=resolved_session_id,
-        current_task=env.current_task_id,
-        tasks=env.available_tasks(),
+        session_id=session[0] if session is not None else None,
+        current_task=env.current_task_id if env is not None else None,
+        tasks=_task_catalog(),
     )
 
 
@@ -144,13 +154,8 @@ def health() -> dict[str, str]:
 
 @app.get("/tasks", response_model=TaskCatalog)
 def tasks(
-    request: Request,
-    response: Response,
-    session_id: str | None = Query(default=None),
 ) -> TaskCatalog:
-    resolved_session_id, env = _session_env(request, session_id, create=True)
-    _bind_session(response, resolved_session_id)
-    return TaskCatalog(tasks=env.available_tasks())
+    return TaskCatalog(tasks=_task_catalog())
 
 
 @app.get("/reset", response_model=ResetResponse)
@@ -187,7 +192,11 @@ def step(
 ) -> StepResponse:
     resolved_session_id, env = _session_env(request, session_id, create=False)
     _bind_session(response, resolved_session_id)
-    return env.step(action)
+    try:
+        return env.step_response(action)
+    except (KeyError, ValueError) as exc:
+        message = exc.args[0] if exc.args else "Invalid action."
+        raise HTTPException(status_code=400, detail=str(message)) from exc
 
 
 @app.get("/observation", response_model=CyberSOCObservation)
@@ -215,7 +224,7 @@ def state(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the Autonomous CyberSOC OpenEnv++ server.")
     parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "7860")))
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args()
     uvicorn.run("server.app:app", host=args.host, port=args.port, reload=args.reload)

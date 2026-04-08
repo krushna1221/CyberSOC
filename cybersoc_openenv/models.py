@@ -221,12 +221,21 @@ class StepResponse(BaseModel):
     done: bool
     info: StepInfo
 
+    def as_tuple(self) -> tuple[CyberSOCObservation, CyberSOCReward, bool, StepInfo]:
+        return (self.observation, self.reward, self.done, self.info)
+
+    def __iter__(self):
+        yield self.observation
+        yield self.reward
+        yield self.done
+        yield self.info
+
 
 class RootStatus(BaseModel):
     name: str
     version: str
     status: str
-    session_id: str
+    session_id: str | None
     current_task: str | None
     tasks: list[TaskDefinitionView]
 

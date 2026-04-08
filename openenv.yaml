@@ -8,7 +8,7 @@ type: space
 runtime: fastapi
 app: server.app:app
 entrypoint: server.app:main
-port: 8000
+port: 7860
 action: CyberSOCAction
 observation: CyberSOCObservation
 reward: CyberSOCReward

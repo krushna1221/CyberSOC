@@ -13,8 +13,10 @@ def test_easy_task_full_score_with_correct_triage() -> None:
     env.reset(task_id="alert-triage-easy", seed=7)
     env.step(CyberSOCAction(action_type="triage_alert", alert_id="ALT-E1", classification=TriageLabel.TRUE_POSITIVE))
     env.step(CyberSOCAction(action_type="triage_alert", alert_id="ALT-E2", classification=TriageLabel.FALSE_POSITIVE))
-    result = env.step(CyberSOCAction(action_type="triage_alert", alert_id="ALT-E3", classification=TriageLabel.TRUE_POSITIVE))
-    assert result.done is True
+    _, _, done, _ = env.step(
+        CyberSOCAction(action_type="triage_alert", alert_id="ALT-E3", classification=TriageLabel.TRUE_POSITIVE)
+    )
+    assert done is True
     assert grade_state(env.state()) == 1.0
 
 
@@ -31,9 +33,11 @@ def test_medium_task_containment_reaches_full_score() -> None:
     env.step(CyberSOCAction(action_type="patch_system", node_id="vpn-01"))
     env.step(CyberSOCAction(action_type="isolate_node", node_id="ws-23"))
     env.step(CyberSOCAction(action_type="triage_alert", alert_id="ALT-M1", classification=TriageLabel.TRUE_POSITIVE))
-    result = env.step(CyberSOCAction(action_type="triage_alert", alert_id="ALT-M2", classification=TriageLabel.FALSE_POSITIVE))
+    _, _, done, _ = env.step(
+        CyberSOCAction(action_type="triage_alert", alert_id="ALT-M2", classification=TriageLabel.FALSE_POSITIVE)
+    )
     state = env.state()
-    assert result.done is True
+    assert done is True
     assert "ws-23" in state.contained_nodes
     assert grade_state(state) == 1.0
 
@@ -41,9 +45,9 @@ def test_medium_task_containment_reaches_full_score() -> None:
 def test_medium_task_isolation_alone_triggers_backup_pressure() -> None:
     env = CyberSOCEnvironment()
     env.reset(task_id="incident-containment-medium", seed=7)
-    result = env.step(CyberSOCAction(action_type="isolate_node", node_id="ws-23"))
+    _, _, done, _ = env.step(CyberSOCAction(action_type="isolate_node", node_id="ws-23"))
     state = env.state()
-    assert result.done is False
+    assert done is False
     assert "vpn-01" in state.compromised_nodes
     assert grade_state(state) < 1.0
 
@@ -63,3 +67,29 @@ def test_observation_keeps_compromise_status_partial() -> None:
     node_status = {node.node_id: node.status_hint for node in observation.node_overview}
     assert node_status["fin-ws-07"] == "suspicious"
     assert "compromised" not in node_status.values()
+
+
+def test_invalid_alert_action_does_not_crash_environment() -> None:
+    env = CyberSOCEnvironment()
+    env.reset(task_id="alert-triage-easy", seed=7)
+    observation, reward, done, info = env.step(
+        CyberSOCAction(
+            action_type="triage_alert",
+            alert_id="DOES-NOT-EXIST",
+            classification=TriageLabel.TRUE_POSITIVE,
+        )
+    )
+    assert done is False
+    assert reward.value < 0
+    assert info.penalties["invalid_target"] < 0
+    assert observation.last_action_result is not None
+    assert observation.last_action_result.success is False
+
+
+def test_repeated_identical_action_gets_repeat_penalty() -> None:
+    env = CyberSOCEnvironment()
+    env.reset(task_id="alert-triage-easy", seed=7)
+    env.step(CyberSOCAction(action_type="noop", justification="first_noop"))
+    _, reward, _, info = env.step(CyberSOCAction(action_type="noop", justification="repeat_noop"))
+    assert reward.value < 0
+    assert info.penalties["repeat_action"] < 0
