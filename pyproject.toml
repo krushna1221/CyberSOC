@@ -12,7 +12,8 @@ authors = [{ name = "CyberSOC-OpenEnv Contributors" }]
 dependencies = [
   "fastapi>=0.116.0,<1.0.0",
   "httpx>=0.28.0,<1.0.0",
-  "openai>=1.75.0,<2.0.0",
+  "openai>=1.75.0,<3.0.0",
+  "openenv-core[core]>=0.2.0,<1.0.0",
   "pydantic>=2.11.0,<3.0.0",
   "pyyaml>=6.0.2,<7.0.0",
   "uvicorn>=0.35.0,<1.0.0",
