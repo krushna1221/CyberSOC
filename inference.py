@@ -16,6 +16,7 @@ from cybersoc_openenv.graders import grade_state
 from cybersoc_openenv.models import CyberSOCAction, CyberSOCObservation, TaskRunSummary, TriageLabel
 
 DEFAULT_API_BASE_URL = "https://router.huggingface.co/v1"
+DEFAULT_MODEL_NAME = "Qwen/Qwen3.5-9B:together"
 DEFAULT_ENV_SEED = 7
 DEFAULT_TASKS = [
     "alert-triage-easy",
@@ -178,14 +179,10 @@ def _llm_action(client: OpenAI, model_name: str, observation: CyberSOCObservatio
 def _build_openai_client() -> tuple[OpenAI, str]:
     api_base_url = os.getenv("API_BASE_URL", DEFAULT_API_BASE_URL)
     api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY") or os.getenv("API_KEY")
-    model_name = os.getenv("MODEL_NAME")
+    model_name = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
     if not api_key:
         raise RuntimeError(
             "No API key found. Set HF_TOKEN (or OPENAI_API_KEY / API_KEY) before running."
-        )
-    if not model_name:
-        raise RuntimeError(
-            "MODEL_NAME environment variable is not set."
         )
     return OpenAI(base_url=api_base_url, api_key=api_key), model_name
 
@@ -210,8 +207,23 @@ def _format_progress_value(value: Any) -> str:
 
 
 def _stdout_progress(tag: str, payload: dict[str, Any]) -> None:
-    fields = " ".join(f"{key}={_format_progress_value(value)}" for key, value in payload.items())
-    print(f"[{tag}] {fields}".rstrip(), flush=True)
+    if tag == "START":
+        line = f"[START] task={_format_progress_value(payload['task'])}"
+    elif tag == "STEP":
+        line = (
+            f"[STEP] step={_format_progress_value(payload['step'])} "
+            f"reward={_format_progress_value(payload['reward'])}"
+        )
+    elif tag == "END":
+        line = (
+            f"[END] task={_format_progress_value(payload['task'])} "
+            f"score={_format_progress_value(payload['score'])} "
+            f"steps={_format_progress_value(payload['steps'])}"
+        )
+    else:
+        fields = " ".join(f"{key}={_format_progress_value(value)}" for key, value in payload.items())
+        line = f"[{tag}] {fields}".rstrip()
+    print(line, flush=True)
 
 
 def run(policy: str, progress_callback: ProgressCallback | None = None) -> dict[str, Any]:
@@ -238,8 +250,6 @@ def run(policy: str, progress_callback: ProgressCallback | None = None) -> dict[
                     "START",
                     {
                         "task": task_id,
-                        "policy": effective_policy,
-                        "max_steps": observation.max_steps,
                     },
                 )
             done = False
@@ -263,11 +273,8 @@ def run(policy: str, progress_callback: ProgressCallback | None = None) -> dict[
                     progress_callback(
                         "STEP",
                         {
-                            "task": task_id,
                             "step": observation.current_step,
                             "reward": step.reward.value,
-                            "done": done,
-                            "action": action.action_type.value,
                         },
                     )
 
@@ -294,7 +301,6 @@ def run(policy: str, progress_callback: ProgressCallback | None = None) -> dict[
                         "task": task_id,
                         "score": score,
                         "steps": state.step_count,
-                        "terminal_reason": state.terminal_reason or "none",
                     },
                 )
     finally:
