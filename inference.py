@@ -7,7 +7,7 @@ import json
 import os
 import re
 import textwrap
-from typing import Any
+from typing import Any, Callable
 
 from openai import OpenAI
 
@@ -24,6 +24,7 @@ DEFAULT_TASKS = [
 ]
 JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
 FALLBACK_ACTION = {"action_type": "noop", "justification": "fallback_noop"}
+ProgressCallback = Callable[[str, dict[str, Any]], None]
 
 SYSTEM_PROMPT = textwrap.dedent(
     """
@@ -199,7 +200,21 @@ def _build_env_client() -> tuple[CyberSOCEnvClient | InProcessCyberSOCEnvClient,
     return InProcessCyberSOCEnvClient(app), "in-process-fastapi"
 
 
-def run(policy: str) -> dict[str, Any]:
+def _format_progress_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    text = str(value)
+    return text.replace(" ", "_")
+
+
+def _stdout_progress(tag: str, payload: dict[str, Any]) -> None:
+    fields = " ".join(f"{key}={_format_progress_value(value)}" for key, value in payload.items())
+    print(f"[{tag}] {fields}".rstrip(), flush=True)
+
+
+def run(policy: str, progress_callback: ProgressCallback | None = None) -> dict[str, Any]:
     env_client, environment_target = _build_env_client()
     client = None
     model_name = None
@@ -218,6 +233,15 @@ def run(policy: str) -> dict[str, Any]:
     try:
         for task_id in DEFAULT_TASKS:
             observation = env_client.reset(task_id=task_id, seed=DEFAULT_ENV_SEED).observation
+            if progress_callback is not None:
+                progress_callback(
+                    "START",
+                    {
+                        "task": task_id,
+                        "policy": effective_policy,
+                        "max_steps": observation.max_steps,
+                    },
+                )
             done = False
             while not done:
                 if effective_policy == "heuristic":
@@ -235,12 +259,24 @@ def run(policy: str) -> dict[str, Any]:
                 step = env_client.step(action)
                 observation = step.observation
                 done = step.done
+                if progress_callback is not None:
+                    progress_callback(
+                        "STEP",
+                        {
+                            "task": task_id,
+                            "step": observation.current_step,
+                            "reward": step.reward.value,
+                            "done": done,
+                            "action": action.action_type.value,
+                        },
+                    )
 
             state = env_client.state()
+            score = grade_state(state)
             summaries.append(
                 TaskRunSummary(
                     task_id=task_id,
-                    score=grade_state(state),
+                    score=score,
                     steps=state.step_count,
                     terminal_reason=state.terminal_reason,
                     raw={
@@ -251,6 +287,16 @@ def run(policy: str) -> dict[str, Any]:
                     },
                 )
             )
+            if progress_callback is not None:
+                progress_callback(
+                    "END",
+                    {
+                        "task": task_id,
+                        "score": score,
+                        "steps": state.step_count,
+                        "terminal_reason": state.terminal_reason or "none",
+                    },
+                )
     finally:
         env_client.close()
 
@@ -271,8 +317,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the CyberSOC OpenEnv baseline inference.")
     parser.add_argument("--policy", choices=["llm", "heuristic"], default="llm")
     args = parser.parse_args()
-    result = run(policy=args.policy)
-    print(json.dumps(result, indent=2))
+    result = run(policy=args.policy, progress_callback=_stdout_progress)
+    print(json.dumps(result, indent=2), flush=True)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
-import os
+import subprocess
+import sys
 
 from inference import run
 
@@ -22,3 +23,16 @@ def test_llm_policy_falls_back_to_heuristic_when_env_missing(monkeypatch) -> Non
     assert result["effective_policy"] == "heuristic"
     assert result["average_score"] >= 0.8
     assert result["warnings"]
+
+
+def test_inference_stdout_contains_structured_blocks() -> None:
+    completed = subprocess.run(
+        [sys.executable, "inference.py", "--policy", "heuristic"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    stdout = completed.stdout
+    assert "[START]" in stdout
+    assert "[STEP]" in stdout
+    assert "[END]" in stdout
