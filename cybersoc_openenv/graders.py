@@ -5,9 +5,11 @@ from __future__ import annotations
 from .models import CyberSOCState
 from .scenarios import SCENARIOS
 
+STRICT_SCORE_EPSILON = 0.0001
+
 
 def _clamp(value: float) -> float:
-    return max(0.0, min(1.0, value))
+    return max(STRICT_SCORE_EPSILON, min(1.0 - STRICT_SCORE_EPSILON, value))
 
 
 def grade_state(state: CyberSOCState) -> float:
@@ -16,7 +18,7 @@ def grade_state(state: CyberSOCState) -> float:
     if scenario.score_mode == "triage":
         expected = {alert_id: label.value for alert_id, label in scenario.expected_triage.items()}
         correct = sum(1 for alert_id, label in expected.items() if state.triage_decisions.get(alert_id) == label)
-        return round(correct / len(expected), 4)
+        return round(_clamp(correct / len(expected)), 4)
 
     if scenario.score_mode == "containment":
         total_nodes = len(scenario.nodes)

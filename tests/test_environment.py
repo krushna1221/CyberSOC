@@ -17,7 +17,7 @@ def test_easy_task_full_score_with_correct_triage() -> None:
         CyberSOCAction(action_type="triage_alert", alert_id="ALT-E3", classification=TriageLabel.TRUE_POSITIVE)
     )
     assert done is True
-    assert grade_state(env.state()) == 1.0
+    assert 0.99 < grade_state(env.state()) < 1.0
 
 
 def test_reset_keeps_seed_but_generates_unique_episode_ids() -> None:
@@ -39,7 +39,7 @@ def test_medium_task_containment_reaches_full_score() -> None:
     state = env.state()
     assert done is True
     assert "ws-23" in state.contained_nodes
-    assert grade_state(state) == 1.0
+    assert 0.99 < grade_state(state) < 1.0
 
 
 def test_medium_task_isolation_alone_triggers_backup_pressure() -> None:

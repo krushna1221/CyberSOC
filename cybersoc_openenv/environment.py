@@ -25,6 +25,8 @@ from .scenarios import AlertSpec, LogSpec, NodeSpec, SCENARIOS
 
 
 class CyberSOCEnvironment:
+    STRICT_SCORE_EPSILON = 0.0001
+
     """Deterministic, partially observable SOC workflow environment."""
 
     ACTION_COSTS: dict[ActionType, float] = {
@@ -671,7 +673,7 @@ class CyberSOCEnvironment:
 
     def _grader_score(self) -> float:
         if self._scenario.score_mode == "triage":
-            return round(self._triage_ratio(), 4)
+            return round(self._clamp(self._triage_ratio()), 4)
         if self._scenario.score_mode == "containment":
             unresolved = len(self._uncontained_compromised_nodes())
             total_nodes = len(self._scenario.nodes)
@@ -945,7 +947,7 @@ class CyberSOCEnvironment:
 
     @staticmethod
     def _clamp(value: float) -> float:
-        return max(0.0, min(1.0, value))
+        return max(CyberSOCEnvironment.STRICT_SCORE_EPSILON, min(1.0 - CyberSOCEnvironment.STRICT_SCORE_EPSILON, value))
 
     def _reward_explanation(self, components: dict[str, float], notes: list[str]) -> str:
         dominant = sorted(components.items(), key=lambda item: abs(item[1]), reverse=True)[:3]
