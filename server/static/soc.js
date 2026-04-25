@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 const S={ep:0,step:0,cum:0,reward:0,max:1,session:null,task:null,lastState:null,lastObs:null,selected:null,logs:[],metrics:null};
 const U={};
 const COLORS={normal:0x00e5ff,suspicious:0xffb300,compromised:0xff3355,isolated:0xff9900,contained:0x00ff88,patched:0x00b7ff,hub:0x0080ff};
