@@ -21,7 +21,7 @@ The project implements an OpenEnv-style environment with:
 - typed `Action`, `Observation`, `Reward`, and `State` models
 - full `reset()`, `step()`, and `state()` workflow
 - three deterministic tasks from easy to hard
-- programmatic graders with scores in the `0.0` to `1.0` range
+- programmatic graders with validator-safe scores strictly inside `(0, 1)`
 - dense reward shaping across the whole trajectory
 - a baseline `inference.py` script that uses the OpenAI client
 - a FastAPI service with session-isolated episodes
@@ -119,10 +119,10 @@ Rewards are dense rather than sparse. The environment returns positive signal fo
 The package now also includes a small curated alert reference set in `cybersoc_openenv/data/curated_alerts.json`. It is designed for:
 
 - offline evaluation and regression checks
-- few-shot prompt examples inside `inference.py`
+- sanitized few-shot prompt examples inside `inference.py`
 - demos that compare alert evidence, expected labels, and recommended response patterns
 
-The dataset covers all three task families and includes both true positives and false positives across phishing, malware, impossible travel, token replay, lateral movement, credential theft, data exfiltration, PowerShell abuse, and anomaly-style alerts.
+The dataset covers all three task families and includes both true positives and false positives across phishing, malware, impossible travel, token replay, lateral movement, credential theft, data exfiltration, PowerShell abuse, and anomaly-style alerts. Live prompt examples intentionally omit direct answer keys so the benchmark still measures decision quality rather than copying reference labels.
 
 ## Technical Architecture
 

@@ -13,7 +13,7 @@ def _clamp(value: float) -> float:
 
 
 def grade_state(state: CyberSOCState) -> float:
-    """Return a task score in the 0.0-1.0 range."""
+    """Return a validator-safe task score strictly inside the open interval (0, 1)."""
     scenario = SCENARIOS[state.task_id]
     if scenario.score_mode == "triage":
         expected = {alert_id: label.value for alert_id, label in scenario.expected_triage.items()}
