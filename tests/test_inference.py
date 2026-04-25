@@ -2,7 +2,8 @@ import subprocess
 import sys
 import re
 
-from inference import _build_openai_client, run
+from cybersoc_openenv.environment import CyberSOCEnvironment
+from inference import _build_openai_client, _build_prompt_payload, run
 
 
 def test_heuristic_inference_runs_against_api_surface() -> None:
@@ -44,3 +45,15 @@ def test_inference_stdout_contains_structured_blocks() -> None:
     assert re.search(r"^\[START\] task=\S+$", stdout, re.MULTILINE)
     assert re.search(r"^\[STEP\] step=\d+ reward=-?\d+\.\d{4}$", stdout, re.MULTILINE)
     assert re.search(r"^\[END\] task=\S+ score=\d+\.\d{4} steps=\d+$", stdout, re.MULTILINE)
+
+
+def test_prompt_payload_includes_reference_examples() -> None:
+    env = CyberSOCEnvironment()
+    observation = env.reset(task_id="alert-triage-easy", seed=7)
+
+    payload = _build_prompt_payload(observation)
+
+    assert payload["reference_examples"]
+    assert payload["current_observation"]["task_id"] == "alert-triage-easy"
+    assert "expected_label" not in payload["reference_examples"][0]
+    assert "playbook_hint" in payload["reference_examples"][0]

@@ -1,1 +1,2 @@
+recursive-include cybersoc_openenv/data *.json *.md
 recursive-include server/static *.html *.css *.js

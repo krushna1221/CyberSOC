@@ -87,6 +87,8 @@ class ActionFeedback(BaseModel):
     summary: str
     success: bool
     impact: str
+    confidence: float = Field(ge=0.0, le=1.0, default=0.5)
+    reasoning: list[str] = Field(default_factory=list)
     visible_changes: list[str] = Field(default_factory=list)
 
 
@@ -161,6 +163,8 @@ class ActionAuditRecord(BaseModel):
     success: bool
     reward: float
     note: str
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    reasoning: list[str] = Field(default_factory=list)
 
 
 class CyberSOCState(BaseModel):
@@ -191,6 +195,47 @@ class CyberSOCState(BaseModel):
     incident_escalated: bool
     exfiltration_triggered: bool
     history: list[ActionAuditRecord] = Field(default_factory=list)
+
+
+class SessionMetrics(BaseModel):
+    session_id: str | None = None
+    episode_id: str | None = None
+    task_id: str | None = None
+    difficulty: Difficulty | None = None
+    done: bool
+    terminal_reason: str | None = None
+    total_actions: int
+    successful_actions: int
+    failed_actions: int
+    total_alerts_processed: int
+    alerts_expected: int
+    correct_triage: int
+    false_positives: int
+    false_negatives: int
+    triage_accuracy: float
+    average_response_time: float
+    average_reward: float
+    task_score: float
+    cumulative_reward: float
+
+
+class MetricsResponse(BaseModel):
+    scope: Literal["session", "global"]
+    active_sessions: int
+    episodes_completed: int
+    total_actions: int
+    successful_actions: int
+    failed_actions: int
+    total_alerts_processed: int
+    alerts_expected: int
+    correct_triage: int
+    false_positives: int
+    false_negatives: int
+    triage_accuracy: float
+    average_response_time: float
+    average_reward: float
+    average_task_score: float
+    sessions: list[SessionMetrics] = Field(default_factory=list)
 
 
 class ResetRequest(BaseModel):

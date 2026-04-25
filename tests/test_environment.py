@@ -93,3 +93,36 @@ def test_repeated_identical_action_gets_repeat_penalty() -> None:
     _, reward, _, info = env.step(CyberSOCAction(action_type="noop", justification="repeat_noop"))
     assert reward.value < 0
     assert info.penalties["repeat_action"] < 0
+
+
+def test_action_feedback_and_history_include_confidence_and_reasoning() -> None:
+    env = CyberSOCEnvironment()
+    env.reset(task_id="alert-triage-easy", seed=7)
+    observation, _, _, _ = env.step(
+        CyberSOCAction(action_type="triage_alert", alert_id="ALT-E1", classification=TriageLabel.TRUE_POSITIVE)
+    )
+    feedback = observation.last_action_result
+    assert feedback is not None
+    assert 0.0 <= feedback.confidence <= 1.0
+    assert feedback.reasoning
+
+    history_entry = env.state().history[-1]
+    assert history_entry.confidence == feedback.confidence
+    assert history_entry.reasoning == feedback.reasoning
+
+
+def test_environment_metrics_track_triage_quality() -> None:
+    env = CyberSOCEnvironment()
+    env.reset(task_id="alert-triage-easy", seed=7)
+    env.step(CyberSOCAction(action_type="triage_alert", alert_id="ALT-E1", classification=TriageLabel.TRUE_POSITIVE))
+    env.step(CyberSOCAction(action_type="triage_alert", alert_id="ALT-E2", classification=TriageLabel.TRUE_POSITIVE))
+
+    metrics = env.metrics(session_id="session-1")
+    assert metrics.session_id == "session-1"
+    assert metrics.total_actions == 2
+    assert metrics.total_alerts_processed == 2
+    assert metrics.correct_triage == 1
+    assert metrics.false_positives == 1
+    assert metrics.false_negatives == 1
+    assert metrics.triage_accuracy < 1.0
+    assert metrics.average_response_time == 0.35

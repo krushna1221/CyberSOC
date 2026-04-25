@@ -17,6 +17,7 @@ from .models import (
     CyberSOCState,
     LogEntryView,
     NodeView,
+    SessionMetrics,
     StepInfo,
     StepResponse,
     TaskDefinitionView,
@@ -38,6 +39,17 @@ class CyberSOCEnvironment:
         ActionType.ESCALATE_INCIDENT: 0.80,
         ActionType.IGNORE_ALERT: 0.05,
         ActionType.NOOP: 0.00,
+    }
+
+    ACTION_RESPONSE_TIMES: dict[ActionType, float] = {
+        ActionType.TRIAGE_ALERT: 0.35,
+        ActionType.ISOLATE_NODE: 1.45,
+        ActionType.PATCH_SYSTEM: 1.10,
+        ActionType.BLOCK_INDICATOR: 0.55,
+        ActionType.REQUEST_FORENSICS: 0.95,
+        ActionType.ESCALATE_INCIDENT: 0.80,
+        ActionType.IGNORE_ALERT: 0.12,
+        ActionType.NOOP: 0.08,
     }
 
     def __init__(self, default_task_id: str = "alert-triage-easy") -> None:
@@ -77,6 +89,7 @@ class CyberSOCEnvironment:
         self._damage = 0.0
         self._cost = 0.0
         self._delay = 0.0
+        self._response_time_total = 0.0
         self._cumulative_reward = 0.0
         self._compromised_nodes = set(self._scenario.initial_compromised)
         self._compromised_at: dict[str, int] = {node_id: 0 for node_id in self._compromised_nodes}
@@ -156,6 +169,56 @@ class CyberSOCEnvironment:
             history=list(self._history),
         )
 
+    def metrics(self, session_id: str | None = None) -> SessionMetrics:
+        expected_triage = {
+            alert_id: label.value for alert_id, label in self._scenario.expected_triage.items()
+        }
+        correct_triage = sum(
+            1
+            for alert_id, label in expected_triage.items()
+            if self._triage_decisions.get(alert_id) == label
+        )
+        false_positives = sum(
+            1
+            for alert_id, decision in self._triage_decisions.items()
+            if decision == "true_positive" and expected_triage.get(alert_id) == "false_positive"
+        )
+        false_negatives = sum(
+            1
+            for alert_id in expected_triage
+            if expected_triage.get(alert_id) == "true_positive"
+            and self._triage_decisions.get(alert_id) != "true_positive"
+        )
+        total_actions = len(self._history)
+        successful_actions = sum(1 for record in self._history if record.success)
+        failed_actions = total_actions - successful_actions
+        total_alerts_processed = len(set(self._triage_decisions) | self._ignored_alerts)
+        average_reward = self._cumulative_reward / total_actions if total_actions else 0.0
+        average_response_time = self._response_time_total / total_actions if total_actions else 0.0
+        alerts_expected = len(expected_triage)
+
+        return SessionMetrics(
+            session_id=session_id,
+            episode_id=self._episode_id,
+            task_id=self._scenario.task_id,
+            difficulty=self._scenario.difficulty,
+            done=self._done,
+            terminal_reason=self._terminal_reason,
+            total_actions=total_actions,
+            successful_actions=successful_actions,
+            failed_actions=failed_actions,
+            total_alerts_processed=total_alerts_processed,
+            alerts_expected=alerts_expected,
+            correct_triage=correct_triage,
+            false_positives=false_positives,
+            false_negatives=false_negatives,
+            triage_accuracy=round(self._safe_ratio(correct_triage, alerts_expected), 4),
+            average_response_time=round(average_response_time, 4),
+            average_reward=round(average_reward, 4),
+            task_score=round(self._grader_score(), 4),
+            cumulative_reward=round(self._cumulative_reward, 4),
+        )
+
     def observation(self) -> CyberSOCObservation:
         return self._build_observation()
 
@@ -188,12 +251,17 @@ class CyberSOCEnvironment:
         pre_progress = self._progress_score()
         self._step_count += 1
         self._delay = float(self._step_count)
+        self._response_time_total = round(
+            self._response_time_total + self.ACTION_RESPONSE_TIMES[typed_action.action_type],
+            4,
+        )
 
         components: dict[str, float] = {}
         penalties: dict[str, float] = {}
         notes: list[str] = []
 
         feedback, action_components, action_penalties, action_notes = self._apply_action(typed_action)
+        feedback = self._with_decision_metadata(typed_action, feedback, action_notes)
         components.update(action_components)
         penalties.update(action_penalties)
         notes.extend(action_notes)
@@ -236,6 +304,8 @@ class CyberSOCEnvironment:
                 success=feedback.success,
                 reward=reward_value,
                 note=feedback.summary,
+                confidence=feedback.confidence,
+                reasoning=list(feedback.reasoning),
             )
         )
 
@@ -521,6 +591,37 @@ class CyberSOCEnvironment:
             penalties,
             notes,
         )
+
+    def _with_decision_metadata(
+        self,
+        action: CyberSOCAction,
+        feedback: ActionFeedback,
+        action_notes: list[str],
+    ) -> ActionFeedback:
+        reasoning = list(dict.fromkeys(action_notes + [feedback.impact]))
+        confidence = self._estimate_confidence(action, feedback.success, action_notes)
+        feedback.confidence = confidence
+        feedback.reasoning = reasoning[:3]
+        return feedback
+
+    def _estimate_confidence(
+        self,
+        action: CyberSOCAction,
+        success: bool,
+        action_notes: list[str],
+    ) -> float:
+        confidence = 0.84 if success else 0.32
+        if action.action_type == ActionType.TRIAGE_ALERT:
+            confidence += 0.08 if success else -0.06
+        elif action.action_type in {ActionType.ISOLATE_NODE, ActionType.PATCH_SYSTEM, ActionType.BLOCK_INDICATOR}:
+            confidence += 0.04 if success else -0.04
+        elif action.action_type == ActionType.REQUEST_FORENSICS:
+            confidence -= 0.06
+        if any("Unknown" in note or "invalid" in note.lower() for note in action_notes):
+            confidence = min(confidence, 0.18)
+        if any("No new evidence" in note for note in action_notes):
+            confidence = min(confidence, 0.36)
+        return round(min(0.99, max(0.01, confidence)), 2)
 
     def _invalid_action(
         self,
@@ -948,6 +1049,12 @@ class CyberSOCEnvironment:
     @staticmethod
     def _clamp(value: float) -> float:
         return max(CyberSOCEnvironment.STRICT_SCORE_EPSILON, min(1.0 - CyberSOCEnvironment.STRICT_SCORE_EPSILON, value))
+
+    @staticmethod
+    def _safe_ratio(numerator: int, denominator: int) -> float:
+        if denominator <= 0:
+            return 0.0
+        return numerator / denominator
 
     def _reward_explanation(self, components: dict[str, float], notes: list[str]) -> str:
         dominant = sorted(components.items(), key=lambda item: abs(item[1]), reverse=True)[:3]

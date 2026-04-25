@@ -12,6 +12,7 @@ from typing import Any, Callable
 from openai import OpenAI
 
 from cybersoc_openenv.client import CyberSOCEnvClient, InProcessCyberSOCEnvClient
+from cybersoc_openenv.datasets import prompt_reference_examples
 from cybersoc_openenv.graders import grade_state
 from cybersoc_openenv.models import CyberSOCAction, CyberSOCObservation, TaskRunSummary, TriageLabel
 
@@ -65,6 +66,13 @@ def _observation_payload(observation: CyberSOCObservation) -> dict[str, Any]:
         "node_overview": [node.model_dump(mode="json") for node in observation.node_overview],
         "last_action_result": observation.last_action_result.model_dump(mode="json") if observation.last_action_result else None,
         "available_actions": [action.value for action in observation.available_actions],
+    }
+
+
+def _build_prompt_payload(observation: CyberSOCObservation) -> dict[str, Any]:
+    return {
+        "reference_examples": prompt_reference_examples(observation, limit=2),
+        "current_observation": _observation_payload(observation),
     }
 
 
@@ -157,7 +165,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 def _llm_action(client: OpenAI, model_name: str, observation: CyberSOCObservation) -> CyberSOCAction:
-    prompt = json.dumps(_observation_payload(observation), indent=2)
+    prompt = json.dumps(_build_prompt_payload(observation), indent=2)
     response = client.chat.completions.create(
         model=model_name,
         messages=[

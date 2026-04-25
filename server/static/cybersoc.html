@@ -93,11 +93,6 @@
             <label class="field-label">TASK SCENARIO</label>
             <select id="task-select" class="cyber-select">
               <option value="">-- SELECT MISSION --</option>
-              <option value="apt_hunt">APT Hunt</option>
-              <option value="ransomware_response">Ransomware Response</option>
-              <option value="insider_threat">Insider Threat</option>
-              <option value="ddos_mitigation">DDoS Mitigation</option>
-              <option value="data_exfil">Data Exfiltration</option>
             </select>
           </div>
           <button class="cyber-btn btn-reset" id="btn-reset">
@@ -145,6 +140,42 @@
           <div class="kpi-card kpi-reward" id="kpi-reward">
             <div class="kpi-card-label">CUMULATIVE REWARD</div>
             <div class="kpi-card-val" id="kv-reward">0.00</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel-eval">
+        <div class="panel-header">
+          <span class="panel-icon">%</span>
+          <span>EVALUATION METRICS</span>
+          <span class="panel-badge" id="metrics-scope">GLOBAL</span>
+        </div>
+        <div class="panel-body metrics-body">
+          <div class="metrics-grid">
+            <div class="metric-tile">
+              <span class="metric-label">ALERTS PROCESSED</span>
+              <span class="metric-value" id="mt-alerts">0</span>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">TRIAGE ACCURACY</span>
+              <span class="metric-value" id="mt-accuracy">0.00</span>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">AVG RESPONSE</span>
+              <span class="metric-value" id="mt-response">0.00</span>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">TASK SCORE</span>
+              <span class="metric-value" id="mt-score">0.00</span>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">SUCCESS RATE</span>
+              <span class="metric-value" id="mt-success">0.00</span>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">FP / FN</span>
+              <span class="metric-value" id="mt-errors">0 / 0</span>
+            </div>
           </div>
         </div>
       </section>
@@ -278,6 +309,21 @@
             <div class="empty-icon">O</div>
             <div>NO ACTIONS RECORDED</div>
           </div>
+        </div>
+      </section>
+
+      <section class="panel panel-explain">
+        <div class="panel-header">
+          <span class="panel-icon">?</span>
+          <span>ANALYST EXPLAINABILITY</span>
+          <span class="panel-badge success" id="explain-confidence">--</span>
+        </div>
+        <div class="panel-body explain-body">
+          <div class="explain-summary" id="explain-summary">No analyst action has been executed yet.</div>
+          <div class="explain-impact" id="explain-impact">Run a mission step to inspect confidence and reasoning.</div>
+          <ul class="explain-list" id="explain-list">
+            <li>Reasoning will appear here after the first decision.</li>
+          </ul>
         </div>
       </section>
 

@@ -511,6 +511,42 @@ html, body {
   gap: 8px;
   padding: 12px;
 }
+
+.metrics-body {
+  padding: 12px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metric-tile {
+  background: rgba(0, 229, 255, 0.03);
+  border: 1px solid rgba(0, 229, 255, 0.1);
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.metric-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  color: var(--gray-text);
+}
+
+.metric-value {
+  font-family: var(--font-hud);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cyan);
+  word-break: break-word;
+}
 .kpi-card {
   background: var(--bg-glass);
   border: 1px solid rgba(0, 229, 255, 0.12);
@@ -796,6 +832,44 @@ html, body {
   border-color: rgba(255, 34, 68, 0.2);
 }
 
+.result-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.result-summary {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.result-confidence {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  background: rgba(0, 229, 255, 0.06);
+  color: var(--cyan);
+  font-size: 10px;
+}
+
+.result-impact {
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.result-reasoning {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--gray-text);
+}
+
+.result-reasoning li + li {
+  margin-top: 2px;
+}
+
 /* ─── Log Terminal ─── */
 .log-terminal {
   flex: 1;
@@ -881,6 +955,41 @@ html, body {
 .h-reward.positive { color: var(--green); background: rgba(0,255,136,0.08); }
 .h-reward.negative { color: var(--red); background: rgba(255,34,68,0.08); }
 .h-reward.neutral { color: var(--gray-text); }
+
+.h-confidence {
+  color: var(--amber);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.explain-body {
+  gap: 8px;
+}
+
+.explain-summary {
+  font-family: var(--font-hud);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+}
+
+.explain-impact {
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.explain-list {
+  list-style: square;
+  padding-left: 18px;
+  margin: 0;
+  color: var(--gray-text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 /* ─── Debug Panel ─── */
 .debug-body {

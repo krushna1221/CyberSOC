@@ -1,0 +1,530 @@
+{
+  "name": "cybersoc-curated-alerts-v1",
+  "version": "1.0",
+  "description": "Hand-authored SOC alert references aligned with the three CyberSOC OpenEnv task families for evaluation, demos, and few-shot prompting.",
+  "records": [
+    {
+      "example_id": "EX-E1",
+      "task_id": "alert-triage-easy",
+      "difficulty": "easy",
+      "scenario_family": "triage_queue",
+      "kind": "phishing",
+      "severity": "high",
+      "source": "EDR",
+      "node_id": "alice-laptop",
+      "node_role": "workstation",
+      "headline": "Invoice macro launched shell",
+      "summary": "Excel spawned powershell.exe after a user opened a finance-themed attachment.",
+      "indicator": "185.17.44.22",
+      "related_events": [
+        "WINWORD.EXE -> powershell.exe",
+        "Encoded command line observed in child process"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "triage_alert",
+        "target_type": "alert",
+        "classification": "true_positive",
+        "justification": "office_process_spawn_plus_network_ioc"
+      },
+      "reasoning_reference": [
+        "Office child-process spawning PowerShell is high-signal behavior.",
+        "The command used encoding to hide payload details.",
+        "The destination IP is a known malicious callback."
+      ]
+    },
+    {
+      "example_id": "EX-E2",
+      "task_id": "alert-triage-easy",
+      "difficulty": "easy",
+      "scenario_family": "triage_queue",
+      "kind": "impossible_travel",
+      "severity": "medium",
+      "source": "IdP",
+      "node_id": "vpn-01",
+      "node_role": "vpn",
+      "headline": "Impossible travel on traveling employee",
+      "summary": "A sales manager logged in from two countries within 20 minutes while on approved travel.",
+      "indicator": null,
+      "related_events": [
+        "MFA completed successfully",
+        "Travel desk approval exists for the destination"
+      ],
+      "expected_label": "false_positive",
+      "recommended_response": {
+        "primary_action": "triage_alert",
+        "target_type": "alert",
+        "classification": "false_positive",
+        "justification": "verified_travel_context"
+      },
+      "reasoning_reference": [
+        "Approved travel and successful MFA reduce compromise likelihood.",
+        "There is no matching device or malware evidence."
+      ]
+    },
+    {
+      "example_id": "EX-E3",
+      "task_id": "alert-triage-easy",
+      "difficulty": "easy",
+      "scenario_family": "triage_queue",
+      "kind": "malware",
+      "severity": "medium",
+      "source": "Mail Sandbox",
+      "node_id": "mail-gw",
+      "node_role": "mail_gateway",
+      "headline": "Sender domain matched current phishing campaign",
+      "summary": "A mail gateway sandbox matched the sender domain to a high-confidence campaign IOC.",
+      "indicator": "invoice-apac-payments.co",
+      "related_events": [
+        "Sandbox verdict confidence 0.97",
+        "Attachment used macro-enabled document format"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "triage_alert",
+        "target_type": "alert",
+        "classification": "true_positive",
+        "justification": "campaign_ioc_match"
+      },
+      "reasoning_reference": [
+        "The sender domain is already associated with active phishing operations.",
+        "The attachment format matches current delivery tradecraft."
+      ]
+    },
+    {
+      "example_id": "EX-E4",
+      "task_id": "alert-triage-easy",
+      "difficulty": "easy",
+      "scenario_family": "triage_queue",
+      "kind": "anomaly",
+      "severity": "low",
+      "source": "APM",
+      "node_id": "sales-crm",
+      "node_role": "application_server",
+      "headline": "Quarter-close API spike on CRM node",
+      "summary": "The CRM server processed 4x normal API traffic during quarter close, but all requests used known service accounts.",
+      "indicator": null,
+      "related_events": [
+        "Requests originated from approved internal ranges",
+        "No process or auth anomalies were correlated"
+      ],
+      "expected_label": "false_positive",
+      "recommended_response": {
+        "primary_action": "ignore_alert",
+        "target_type": "alert",
+        "classification": null,
+        "justification": "business_peak_without_security_signal"
+      },
+      "reasoning_reference": [
+        "Operational peaks during quarter close are expected.",
+        "There is no malicious process, identity, or IOC evidence."
+      ]
+    },
+    {
+      "example_id": "EX-E5",
+      "task_id": "alert-triage-easy",
+      "difficulty": "easy",
+      "scenario_family": "triage_queue",
+      "kind": "powershell_abuse",
+      "severity": "medium",
+      "source": "EDR",
+      "node_id": "eng-laptop-04",
+      "node_role": "workstation",
+      "headline": "Unsigned script reached external paste site",
+      "summary": "PowerShell launched from explorer.exe and downloaded a script from a public paste service.",
+      "indicator": "rawpaste.example",
+      "related_events": [
+        "Script bypassed execution policy",
+        "No corporate signing certificate present"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "request_forensics",
+        "target_type": "node",
+        "classification": null,
+        "justification": "confirm_external_script_payload"
+      },
+      "reasoning_reference": [
+        "Unsigned external script retrieval is suspicious on a user workstation.",
+        "Execution policy bypass suggests deliberate evasion."
+      ]
+    },
+    {
+      "example_id": "EX-E6",
+      "task_id": "alert-triage-easy",
+      "difficulty": "easy",
+      "scenario_family": "triage_queue",
+      "kind": "phishing",
+      "severity": "low",
+      "source": "Mail Gateway",
+      "node_id": "training-mailbox",
+      "node_role": "mail_gateway",
+      "headline": "Security awareness simulation email flagged",
+      "summary": "A simulated phishing email from the awareness platform triggered keyword-based detection.",
+      "indicator": null,
+      "related_events": [
+        "Sender domain belongs to approved awareness vendor",
+        "Campaign ID matches monthly internal training"
+      ],
+      "expected_label": "false_positive",
+      "recommended_response": {
+        "primary_action": "triage_alert",
+        "target_type": "alert",
+        "classification": "false_positive",
+        "justification": "internal_awareness_campaign"
+      },
+      "reasoning_reference": [
+        "The sender and campaign metadata match the approved simulation vendor.",
+        "No malicious attachment or external infrastructure is involved."
+      ]
+    },
+    {
+      "example_id": "EX-M1",
+      "task_id": "incident-containment-medium",
+      "difficulty": "medium",
+      "scenario_family": "containment",
+      "kind": "malware",
+      "severity": "high",
+      "source": "EDR",
+      "node_id": "ws-23",
+      "node_role": "workstation",
+      "headline": "Beaconing to ransomware command channel",
+      "summary": "A finance workstation initiated repeated TLS connections to a known ransomware C2 endpoint.",
+      "indicator": "185.17.44.22",
+      "related_events": [
+        "rundll32.exe loaded a DLL from user temp storage",
+        "JA3 fingerprint matched BlackSleet cluster"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "isolate_node",
+        "target_type": "node",
+        "classification": null,
+        "justification": "stop_primary_spread"
+      },
+      "reasoning_reference": [
+        "The host is already beaconing to known malicious infrastructure.",
+        "Containment is more urgent than additional triage detail."
+      ]
+    },
+    {
+      "example_id": "EX-M2",
+      "task_id": "incident-containment-medium",
+      "difficulty": "medium",
+      "scenario_family": "containment",
+      "kind": "impossible_travel",
+      "severity": "low",
+      "source": "IdP",
+      "node_id": "vpn-01",
+      "node_role": "vpn",
+      "headline": "VPN geovelocity during maintenance",
+      "summary": "An admin account changed regions during a planned maintenance window from an approved ASN.",
+      "indicator": null,
+      "related_events": [
+        "MFA succeeded",
+        "Device fingerprint matched previous admin sessions"
+      ],
+      "expected_label": "false_positive",
+      "recommended_response": {
+        "primary_action": "triage_alert",
+        "target_type": "alert",
+        "classification": "false_positive",
+        "justification": "maintenance_window_context"
+      },
+      "reasoning_reference": [
+        "The sign-in context is consistent with legitimate maintenance activity.",
+        "There is no supporting endpoint or network compromise evidence."
+      ]
+    },
+    {
+      "example_id": "EX-M3",
+      "task_id": "incident-containment-medium",
+      "difficulty": "medium",
+      "scenario_family": "containment",
+      "kind": "lateral_movement",
+      "severity": "high",
+      "source": "NDR",
+      "node_id": "fs-02",
+      "node_role": "file_server",
+      "headline": "Unexpected SMB pivot into finance share",
+      "summary": "A user workstation reused credentials to create a remote service on the finance file server.",
+      "indicator": null,
+      "related_events": [
+        "New service creation over SMB",
+        "Source host previously flagged for malware"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "request_forensics",
+        "target_type": "node",
+        "classification": null,
+        "justification": "confirm_spread_before_broader_containment"
+      },
+      "reasoning_reference": [
+        "The alert links a compromised workstation to a sensitive server.",
+        "Remote service creation is common hands-on-keyboard tradecraft."
+      ]
+    },
+    {
+      "example_id": "EX-M4",
+      "task_id": "incident-containment-medium",
+      "difficulty": "medium",
+      "scenario_family": "containment",
+      "kind": "credential_theft",
+      "severity": "medium",
+      "source": "SIEM",
+      "node_id": "backup-01",
+      "node_role": "backup_server",
+      "headline": "Backup service account used from workstation subnet",
+      "summary": "The backup service account authenticated from a workstation network outside its normal schedule.",
+      "indicator": null,
+      "related_events": [
+        "Logon type 3 from user subnet",
+        "No maintenance window was active"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "patch_system",
+        "target_type": "node",
+        "classification": null,
+        "justification": "close_backup_lateral_path"
+      },
+      "reasoning_reference": [
+        "Service-account reuse from a workstation subnet is a strong misuse indicator.",
+        "Backup systems often become privileged pivot points."
+      ]
+    },
+    {
+      "example_id": "EX-M5",
+      "task_id": "incident-containment-medium",
+      "difficulty": "medium",
+      "scenario_family": "containment",
+      "kind": "data_exfiltration",
+      "severity": "critical",
+      "source": "Directory Audit",
+      "node_id": "dc-01",
+      "node_role": "domain_controller",
+      "headline": "Replication request from non-admin path",
+      "summary": "A DCSync-like directory replication request was initiated after a service account anomaly.",
+      "indicator": null,
+      "related_events": [
+        "Replication attempted from compromised chain",
+        "Sensitive asset path already exposed"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "escalate_incident",
+        "target_type": "node",
+        "classification": null,
+        "justification": "critical_identity_asset_at_risk"
+      },
+      "reasoning_reference": [
+        "Directory replication abuse is high-severity identity compromise behavior.",
+        "Critical infrastructure involvement justifies incident escalation."
+      ]
+    },
+    {
+      "example_id": "EX-M6",
+      "task_id": "incident-containment-medium",
+      "difficulty": "medium",
+      "scenario_family": "containment",
+      "kind": "anomaly",
+      "severity": "medium",
+      "source": "Backup Console",
+      "node_id": "backup-02",
+      "node_role": "backup_server",
+      "headline": "Large file copy during approved backup seed",
+      "summary": "A backup server moved a large volume of encrypted archives during a documented reseed operation.",
+      "indicator": null,
+      "related_events": [
+        "Change ticket approved for bulk transfer",
+        "Destination host is a known recovery vault"
+      ],
+      "expected_label": "false_positive",
+      "recommended_response": {
+        "primary_action": "ignore_alert",
+        "target_type": "alert",
+        "classification": null,
+        "justification": "approved_backup_reseed"
+      },
+      "reasoning_reference": [
+        "High-volume backup traffic can look suspicious without operational context.",
+        "Change records and destination validation support benign classification."
+      ]
+    },
+    {
+      "example_id": "EX-H1",
+      "task_id": "soc-optimization-hard",
+      "difficulty": "hard",
+      "scenario_family": "optimization",
+      "kind": "phishing",
+      "severity": "high",
+      "source": "EDR",
+      "node_id": "fin-ws-07",
+      "node_role": "workstation",
+      "headline": "Invoice document spawned mshta.exe",
+      "summary": "A finance workstation opened a macro-enabled invoice that launched mshta.exe and outbound traffic.",
+      "indicator": "185.17.44.22",
+      "related_events": [
+        "Excel child spawned mshta.exe",
+        "Outbound traffic to known hostile IP"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "isolate_node",
+        "target_type": "node",
+        "classification": null,
+        "justification": "contain_initial_finance_host"
+      },
+      "reasoning_reference": [
+        "Office-to-script-host execution is malicious in this context.",
+        "Finance hosts are high-value and should be contained quickly."
+      ]
+    },
+    {
+      "example_id": "EX-H2",
+      "task_id": "soc-optimization-hard",
+      "difficulty": "hard",
+      "scenario_family": "optimization",
+      "kind": "powershell_abuse",
+      "severity": "medium",
+      "source": "EDR",
+      "node_id": "hr-laptop-03",
+      "node_role": "workstation",
+      "headline": "Encoded PowerShell on HR device",
+      "summary": "A signed onboarding script ran at its scheduled time and matched the known HR automation path.",
+      "indicator": null,
+      "related_events": [
+        "Script signed by corp automation certificate",
+        "Execution aligned to monthly onboarding schedule"
+      ],
+      "expected_label": "false_positive",
+      "recommended_response": {
+        "primary_action": "triage_alert",
+        "target_type": "alert",
+        "classification": "false_positive",
+        "justification": "known_signed_automation"
+      },
+      "reasoning_reference": [
+        "The certificate, timing, and process tree match approved automation.",
+        "No suspicious network or identity activity is linked to the device."
+      ]
+    },
+    {
+      "example_id": "EX-H3",
+      "task_id": "soc-optimization-hard",
+      "difficulty": "hard",
+      "scenario_family": "optimization",
+      "kind": "token_replay",
+      "severity": "medium",
+      "source": "IdP",
+      "node_id": "vpn-02",
+      "node_role": "vpn",
+      "headline": "Refresh token replay from new ASN",
+      "summary": "A finance user token was replayed from a new ASN with a mismatched user-agent fingerprint.",
+      "indicator": "cdn-sync.net",
+      "related_events": [
+        "Token reuse from unseen network",
+        "Fingerprint mismatch against prior sessions"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "patch_system",
+        "target_type": "node",
+        "classification": null,
+        "justification": "deny_backup_token_path"
+      },
+      "reasoning_reference": [
+        "Token replay enables attacker re-entry even after host containment.",
+        "The VPN path is the attacker’s backup route in this scenario family."
+      ]
+    },
+    {
+      "example_id": "EX-H4",
+      "task_id": "soc-optimization-hard",
+      "difficulty": "hard",
+      "scenario_family": "optimization",
+      "kind": "credential_theft",
+      "severity": "high",
+      "source": "IdP Audit",
+      "node_id": "idp-01",
+      "node_role": "identity_server",
+      "headline": "Suspicious long-lived finance token grant",
+      "summary": "A confidential client requested long-lived finance-scoped tokens through a legacy OAuth app.",
+      "indicator": null,
+      "related_events": [
+        "Unexpected confidential client ID",
+        "Admin consent flow appeared out of normal change window"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "request_forensics",
+        "target_type": "node",
+        "classification": null,
+        "justification": "confirm_identity_abuse_path"
+      },
+      "reasoning_reference": [
+        "Unexpected finance scope grants point to identity abuse.",
+        "Legacy OAuth apps are a known weak link in this environment."
+      ]
+    },
+    {
+      "example_id": "EX-H5",
+      "task_id": "soc-optimization-hard",
+      "difficulty": "hard",
+      "scenario_family": "optimization",
+      "kind": "data_exfiltration",
+      "severity": "critical",
+      "source": "DB Audit",
+      "node_id": "finance-db",
+      "node_role": "database",
+      "headline": "Bulk finance export staged after token abuse",
+      "summary": "A finance database staged a compressed export immediately after unusual identity provider activity.",
+      "indicator": null,
+      "related_events": [
+        "Large archive written to temp staging area",
+        "The initiating principal was recently granted new OAuth scope"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "escalate_incident",
+        "target_type": "node",
+        "classification": null,
+        "justification": "possible_financial_data_exfiltration"
+      },
+      "reasoning_reference": [
+        "This combines identity abuse with sensitive data staging.",
+        "Potential financial data loss requires coordinated response."
+      ]
+    },
+    {
+      "example_id": "EX-H6",
+      "task_id": "soc-optimization-hard",
+      "difficulty": "hard",
+      "scenario_family": "optimization",
+      "kind": "anomaly",
+      "severity": "high",
+      "source": "SecOps Telemetry",
+      "node_id": "edr-collector",
+      "node_role": "security_server",
+      "headline": "Telemetry suppression on EDR collector",
+      "summary": "The EDR collector stopped receiving host events shortly after identity abuse signals appeared upstream.",
+      "indicator": null,
+      "related_events": [
+        "Collector health degraded without maintenance record",
+        "Only security telemetry dropped while network remained reachable"
+      ],
+      "expected_label": "true_positive",
+      "recommended_response": {
+        "primary_action": "block_indicator",
+        "target_type": "indicator",
+        "classification": null,
+        "justification": "remove_backup_c2_domain_if_present"
+      },
+      "reasoning_reference": [
+        "Security visibility loss during an active intrusion is a strong escalation indicator.",
+        "The environment links this phase to backup C2 activity and identity pivoting."
+      ]
+    }
+  ]
+}

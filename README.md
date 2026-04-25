@@ -102,11 +102,27 @@ Every `CyberSOCObservation` includes:
 - last action result
 - analyst notes
 
+Each action result now also carries lightweight explainability:
+
+- confidence score
+- short reasoning bullets
+- impact summary
+
 The agent does not get the full internal compromise graph directly. Hidden state is surfaced through alerts, logs, and defensive investigation.
 
 ### Reward Design
 
 Rewards are dense rather than sparse. The environment returns positive signal for useful triage, containment, patching, blocking, and forensic actions, and penalizes delay, wasted actions, repeated identical actions, bad triage, attacker spread, and accumulated damage.
+
+## Curated Reference Data
+
+The package now also includes a small curated alert reference set in `cybersoc_openenv/data/curated_alerts.json`. It is designed for:
+
+- offline evaluation and regression checks
+- few-shot prompt examples inside `inference.py`
+- demos that compare alert evidence, expected labels, and recommended response patterns
+
+The dataset covers all three task families and includes both true positives and false positives across phishing, malware, impossible travel, token replay, lateral movement, credential theft, data exfiltration, PowerShell abuse, and anomaly-style alerts.
 
 ## Technical Architecture
 
@@ -126,6 +142,7 @@ flowchart LR
 ### Main Components
 
 - `cybersoc_openenv/environment.py`: core transitions, reward logic, attacker progression, episode boundaries
+- `cybersoc_openenv/datasets.py`: packaged curated alert dataset loader and few-shot selector
 - `cybersoc_openenv/scenarios.py`: task definitions, alerts, logs, attack graphs, budgets, indicators
 - `cybersoc_openenv/models.py`: typed Pydantic models
 - `cybersoc_openenv/graders.py`: deterministic task scoring
@@ -174,6 +191,7 @@ This closes the backup path, contains the initial foothold, clears the queue cor
 | `/step` | `POST` | Apply one action |
 | `/observation` | `GET` | Return current observation |
 | `/state` | `GET` | Return current full environment state |
+| `/metrics` | `GET` | Return session or global evaluation metrics |
 
 The backend uses session-isolated environments, so multiple users can interact with the deployed Space safely.
 
@@ -184,7 +202,9 @@ The frontend is connected to the real API and supports:
 - task selection and reset
 - 3D network topology visualization
 - live threat metrics
+- session evaluation metrics
 - alert queue and evidence stream
+- explainable action feedback with confidence and reasoning
 - action dispatch panel
 - episode history
 - raw state and observation inspector
@@ -195,6 +215,10 @@ The frontend is connected to the real API and supports:
 .
 |-- cybersoc_openenv/
 |   |-- client.py
+|   |-- datasets.py
+|   |-- data/
+|   |   |-- curated_alerts.json
+|   |   `-- README.md
 |   |-- environment.py
 |   |-- graders.py
 |   |-- models.py
@@ -285,8 +309,8 @@ Environment variables:
 
 Reference heuristic scores from `python inference.py --policy heuristic`:
 
-- Alert Triage: `1.0000`
-- Incident Containment: `1.0000`
+- Alert Triage: `0.9999`
+- Incident Containment: `0.9999`
 - SOC Optimization: `0.7382`
 - Average: `0.9127`
 

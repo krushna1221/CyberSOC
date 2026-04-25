@@ -17,11 +17,13 @@ from fastapi.staticfiles import StaticFiles
 from cybersoc_openenv.environment import CyberSOCEnvironment
 from cybersoc_openenv.models import (
     CyberSOCAction,
+    MetricsResponse,
     CyberSOCObservation,
     CyberSOCState,
     ResetRequest,
     ResetResponse,
     RootStatus,
+    SessionMetrics,
     StepResponse,
     TaskCatalog,
     TaskDefinitionView,
@@ -64,6 +66,10 @@ class SessionStore:
             self._sessions.move_to_end(session_id)
             return session_id, env
 
+    def snapshot(self) -> list[tuple[str, CyberSOCEnvironment]]:
+        with self._lock:
+            return list(self._sessions.items())
+
 
 SESSION_STORE = SessionStore()
 STATIC_DIR = Path(__file__).with_name("static")
@@ -76,7 +82,7 @@ app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 
 
 def _requested_session_id(request: Request, session_id: str | None) -> str | None:
-    return session_id or request.cookies.get(SESSION_COOKIE_NAME)
+    return request.cookies.get(SESSION_COOKIE_NAME) or session_id
 
 
 def _bind_session(response: Response, session_id: str) -> None:
@@ -120,6 +126,46 @@ def _task_catalog() -> list[TaskDefinitionView]:
     return [env.task_definition(task_id) for task_id in SCENARIOS]
 
 
+def _aggregate_metrics(
+    sessions: list[SessionMetrics],
+    scope: str,
+    *,
+    include_sessions: bool,
+) -> MetricsResponse:
+    total_actions = sum(item.total_actions for item in sessions)
+    alerts_expected = sum(item.alerts_expected for item in sessions)
+    return MetricsResponse(
+        scope=scope,
+        active_sessions=len(sessions),
+        episodes_completed=sum(1 for item in sessions if item.done),
+        total_actions=total_actions,
+        successful_actions=sum(item.successful_actions for item in sessions),
+        failed_actions=sum(item.failed_actions for item in sessions),
+        total_alerts_processed=sum(item.total_alerts_processed for item in sessions),
+        alerts_expected=alerts_expected,
+        correct_triage=sum(item.correct_triage for item in sessions),
+        false_positives=sum(item.false_positives for item in sessions),
+        false_negatives=sum(item.false_negatives for item in sessions),
+        triage_accuracy=round(
+            (sum(item.correct_triage for item in sessions) / alerts_expected) if alerts_expected else 0.0,
+            4,
+        ),
+        average_response_time=round(
+            (sum(item.average_response_time * item.total_actions for item in sessions) / total_actions) if total_actions else 0.0,
+            4,
+        ),
+        average_reward=round(
+            (sum(item.average_reward * item.total_actions for item in sessions) / total_actions) if total_actions else 0.0,
+            4,
+        ),
+        average_task_score=round(
+            (sum(item.task_score for item in sessions) / len(sessions)) if sessions else 0.0,
+            4,
+        ),
+        sessions=sessions if include_sessions else [],
+    )
+
+
 @app.get("/", include_in_schema=False)
 def root(
 ) -> FileResponse:
@@ -156,6 +202,26 @@ def health() -> dict[str, str]:
 def tasks(
 ) -> TaskCatalog:
     return TaskCatalog(tasks=_task_catalog())
+
+
+@app.get("/metrics", response_model=MetricsResponse)
+def metrics(
+    request: Request,
+    response: Response,
+    session_id: str | None = Query(default=None),
+) -> MetricsResponse:
+    requested_id = _requested_session_id(request, session_id)
+    if requested_id:
+        resolved_session_id, env = _session_env(request, session_id, create=False)
+        _bind_session(response, resolved_session_id)
+        return _aggregate_metrics(
+            [env.metrics(session_id=resolved_session_id)],
+            scope="session",
+            include_sessions=True,
+        )
+
+    sessions = [env.metrics(session_id=stored_session_id) for stored_session_id, env in SESSION_STORE.snapshot()]
+    return _aggregate_metrics(sessions, scope="global", include_sessions=False)
 
 
 @app.get("/reset", response_model=ResetResponse)

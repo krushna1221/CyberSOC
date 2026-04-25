@@ -5,7 +5,15 @@ from __future__ import annotations
 import httpx
 from fastapi.testclient import TestClient
 
-from .models import CyberSOCAction, CyberSOCObservation, CyberSOCState, ResetResponse, StepResponse, TaskCatalog
+from .models import (
+    CyberSOCAction,
+    CyberSOCObservation,
+    CyberSOCState,
+    MetricsResponse,
+    ResetResponse,
+    StepResponse,
+    TaskCatalog,
+)
 
 
 class CyberSOCEnvClient:
@@ -19,14 +27,13 @@ class CyberSOCEnvClient:
         self._client.close()
 
     def tasks(self) -> TaskCatalog:
-        response = self._client.get("/tasks", params=self._session_params())
+        response = self._client.get("/tasks")
         response.raise_for_status()
         return TaskCatalog.model_validate(response.json())
 
     def reset(self, task_id: str | None = None, seed: int | None = None) -> ResetResponse:
         response = self._client.post(
             "/reset",
-            params=self._session_params(),
             json={"task_id": task_id, "seed": seed},
         )
         response.raise_for_status()
@@ -37,26 +44,25 @@ class CyberSOCEnvClient:
     def step(self, action: CyberSOCAction) -> StepResponse:
         response = self._client.post(
             "/step",
-            params=self._session_params(),
             json=action.model_dump(mode="json"),
         )
         response.raise_for_status()
         return StepResponse.model_validate(response.json())
 
     def state(self) -> CyberSOCState:
-        response = self._client.get("/state", params=self._session_params())
+        response = self._client.get("/state")
         response.raise_for_status()
         return CyberSOCState.model_validate(response.json())
 
     def observation(self) -> CyberSOCObservation:
-        response = self._client.get("/observation", params=self._session_params())
+        response = self._client.get("/observation")
         response.raise_for_status()
         return CyberSOCObservation.model_validate(response.json())
 
-    def _session_params(self) -> dict[str, str] | None:
-        if not self._session_id:
-            return None
-        return {"session_id": self._session_id}
+    def metrics(self) -> MetricsResponse:
+        response = self._client.get("/metrics")
+        response.raise_for_status()
+        return MetricsResponse.model_validate(response.json())
 
 
 class InProcessCyberSOCEnvClient:
@@ -70,14 +76,13 @@ class InProcessCyberSOCEnvClient:
         self._client.close()
 
     def tasks(self) -> TaskCatalog:
-        response = self._client.get("/tasks", params=self._session_params())
+        response = self._client.get("/tasks")
         response.raise_for_status()
         return TaskCatalog.model_validate(response.json())
 
     def reset(self, task_id: str | None = None, seed: int | None = None) -> ResetResponse:
         response = self._client.post(
             "/reset",
-            params=self._session_params(),
             json={"task_id": task_id, "seed": seed},
         )
         response.raise_for_status()
@@ -88,23 +93,22 @@ class InProcessCyberSOCEnvClient:
     def step(self, action: CyberSOCAction) -> StepResponse:
         response = self._client.post(
             "/step",
-            params=self._session_params(),
             json=action.model_dump(mode="json"),
         )
         response.raise_for_status()
         return StepResponse.model_validate(response.json())
 
     def state(self) -> CyberSOCState:
-        response = self._client.get("/state", params=self._session_params())
+        response = self._client.get("/state")
         response.raise_for_status()
         return CyberSOCState.model_validate(response.json())
 
     def observation(self) -> CyberSOCObservation:
-        response = self._client.get("/observation", params=self._session_params())
+        response = self._client.get("/observation")
         response.raise_for_status()
         return CyberSOCObservation.model_validate(response.json())
 
-    def _session_params(self) -> dict[str, str] | None:
-        if not self._session_id:
-            return None
-        return {"session_id": self._session_id}
+    def metrics(self) -> MetricsResponse:
+        response = self._client.get("/metrics")
+        response.raise_for_status()
+        return MetricsResponse.model_validate(response.json())

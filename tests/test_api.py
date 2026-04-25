@@ -69,6 +69,23 @@ def test_api_sessions_are_isolated() -> None:
     assert "ALT-E1" not in state_two.json()["triage_decisions"]
 
 
+def test_cookie_session_cannot_be_overridden_by_query_param() -> None:
+    client_one = TestClient(app)
+    client_two = TestClient(app)
+
+    reset_one = client_one.post("/reset", json={"task_id": "alert-triage-easy", "seed": 7})
+    reset_two = client_two.post("/reset", json={"task_id": "incident-containment-medium", "seed": 7})
+
+    assert reset_one.status_code == 200
+    assert reset_two.status_code == 200
+
+    stolen_session_id = reset_two.json()["session_id"]
+    state = client_one.get(f"/state?session_id={stolen_session_id}")
+
+    assert state.status_code == 200
+    assert state.json()["task_id"] == "alert-triage-easy"
+
+
 def test_state_requires_known_session() -> None:
     client = TestClient(app)
     response = client.get("/state?session_id=missing-session")
@@ -107,3 +124,38 @@ def test_reset_post_without_body_defaults_successfully() -> None:
     assert payload["session_id"]
     assert payload["task"]["task_id"] == "alert-triage-easy"
     assert payload["observation"]["task_id"] == "alert-triage-easy"
+
+
+def test_metrics_endpoint_reports_session_and_global_summaries() -> None:
+    client = TestClient(app)
+
+    global_before = client.get("/metrics")
+    assert global_before.status_code == 200
+    assert global_before.json()["scope"] == "global"
+
+    reset = client.post("/reset", json={"task_id": "alert-triage-easy", "seed": 7})
+    assert reset.status_code == 200
+
+    step = client.post(
+        "/step",
+        json={"action_type": "triage_alert", "alert_id": "ALT-E1", "classification": "true_positive"},
+    )
+    assert step.status_code == 200
+    assert step.json()["observation"]["last_action_result"]["confidence"] > 0.5
+    assert step.json()["observation"]["last_action_result"]["reasoning"]
+
+    session_metrics = client.get("/metrics")
+    assert session_metrics.status_code == 200
+    payload = session_metrics.json()
+    assert payload["scope"] == "session"
+    assert payload["total_actions"] == 1
+    assert payload["sessions"][0]["task_id"] == "alert-triage-easy"
+    assert payload["sessions"][0]["correct_triage"] == 1
+    assert payload["sessions"][0]["session_id"]
+    assert payload["sessions"][0]["average_response_time"] > 0.0
+
+    global_after = TestClient(app).get("/metrics")
+    assert global_after.status_code == 200
+    assert global_after.json()["scope"] == "global"
+    assert global_after.json()["active_sessions"] >= 1
+    assert global_after.json()["sessions"] == []

@@ -1,4 +1,6 @@
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 __pycache__/
 .venv/
 .venv-validate/
@@ -7,4 +9,7 @@ __pycache__/
 build/
 dist/
 *.pyc
+*.pyo
+.coverage
+htmlcov/
 pytest-cache-files-*
