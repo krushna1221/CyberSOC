@@ -1,0 +1,11 @@
+{
+  "output_path": "artifacts\\training\\cybersoc_sft_train.jsonl",
+  "tasks": [
+    "alert-triage-easy",
+    "incident-containment-medium",
+    "soc-optimization-hard"
+  ],
+  "episodes_per_task": 8,
+  "seed_start": 7,
+  "examples": 96
+}

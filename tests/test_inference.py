@@ -3,7 +3,8 @@ import sys
 import re
 
 from cybersoc_openenv.environment import CyberSOCEnvironment
-from inference import _build_openai_client, _build_prompt_payload, run
+from cybersoc_openenv.training import build_prompt_payload
+from inference import _build_openai_client, run
 
 
 def test_heuristic_inference_runs_against_api_surface() -> None:
@@ -51,7 +52,7 @@ def test_prompt_payload_includes_reference_examples() -> None:
     env = CyberSOCEnvironment()
     observation = env.reset(task_id="alert-triage-easy", seed=7)
 
-    payload = _build_prompt_payload(observation)
+    payload = build_prompt_payload(observation)
 
     assert payload["reference_examples"]
     assert payload["current_observation"]["task_id"] == "alert-triage-easy"

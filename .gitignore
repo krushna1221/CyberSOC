@@ -13,3 +13,5 @@ dist/
 .coverage
 htmlcov/
 pytest-cache-files-*
+artifacts/training/smoke_sft.jsonl
+artifacts/training/smoke_sft.summary.json

@@ -1,2 +1,4 @@
 recursive-include cybersoc_openenv/data *.json *.md
 recursive-include server/static *.html *.css *.js
+recursive-include training *.py *.md *.ipynb
+recursive-include artifacts *.md *.png *.json *.jsonl

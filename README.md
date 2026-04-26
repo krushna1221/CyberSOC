@@ -28,6 +28,26 @@ The project implements an OpenEnv-style environment with:
 - a browser dashboard for manual interaction and debugging
 - Docker and Hugging Face Space readiness
 
+## Submission Links
+
+- Hugging Face Space: [https://huggingface.co/spaces/kalpesh911/CyberSOC](https://huggingface.co/spaces/kalpesh911/CyberSOC)
+- Live environment: [https://kalpesh911-CyberSOC.hf.space](https://kalpesh911-CyberSOC.hf.space)
+- GitHub repo: [https://github.com/krushna1221/CyberSOC](https://github.com/krushna1221/CyberSOC)
+- TRL Colab notebook: [https://colab.research.google.com/github/krushna1221/CyberSOC/blob/main/training/cybersoc_trl_minimal_colab.ipynb](https://colab.research.google.com/github/krushna1221/CyberSOC/blob/main/training/cybersoc_trl_minimal_colab.ipynb)
+- Training scripts: [training/generate_sft_dataset.py](training/generate_sft_dataset.py), [training/train_trl_sft.py](training/train_trl_sft.py)
+- YouTube demo: [https://www.youtube.com/watch?v=R-3gXeFsGPM](https://www.youtube.com/watch?v=R-3gXeFsGPM)
+
+## Submission Materials Checklist
+
+- [x] OpenEnv environment with `reset`, `step`, `state`, and `openenv.yaml`
+- [x] Hugging Face Space deployment
+- [x] Baseline inference runner and deterministic graders
+- [x] Minimal HF TRL Colab notebook and training scripts
+- [x] Public YouTube demo link
+- [ ] Upload final reward/loss plots from a real training run
+- [ ] Link your Hugging Face mini-blog or slide deck if you create one
+- [ ] Replace placeholder training results below with your onsite run artifacts
+
 ## Why This Environment Matters
 
 Modern SOC teams do not solve abstract puzzles. They deal with:
@@ -143,6 +163,7 @@ flowchart LR
 
 - `cybersoc_openenv/environment.py`: core transitions, reward logic, attacker progression, episode boundaries
 - `cybersoc_openenv/datasets.py`: packaged curated alert dataset loader and few-shot selector
+- `cybersoc_openenv/training.py`: shared prompt, heuristic, and rollout helpers for SFT data generation
 - `cybersoc_openenv/scenarios.py`: task definitions, alerts, logs, attack graphs, budgets, indicators
 - `cybersoc_openenv/models.py`: typed Pydantic models
 - `cybersoc_openenv/graders.py`: deterministic task scoring
@@ -209,6 +230,59 @@ The frontend is connected to the real API and supports:
 - episode history
 - raw state and observation inspector
 
+## Training Pipeline
+
+The repo now includes a minimal Hugging Face TRL path so judges can rerun training against the environment.
+
+Recommended order:
+
+1. Install training dependencies:
+
+```bash
+python -m pip install -e ".[dev,training]"
+```
+
+2. Generate heuristic demonstrations:
+
+```bash
+python training/generate_sft_dataset.py --episodes-per-task 8 --output artifacts/training/cybersoc_sft_train.jsonl
+```
+
+3. Fine-tune a small instruction model with HF TRL:
+
+```bash
+python training/train_trl_sft.py \
+  --dataset artifacts/training/cybersoc_sft_train.jsonl \
+  --output-dir artifacts/training/trl-smollm2 \
+  --model HuggingFaceTB/SmolLM2-135M-Instruct \
+  --max-steps 40 \
+  --per-device-train-batch-size 2 \
+  --gradient-accumulation-steps 4
+```
+
+4. Commit or link the generated artifacts:
+
+- `artifacts/training/trl-smollm2/training_loss.png` or `.svg`
+- `artifacts/training/trl-smollm2/score_comparison.png` or `.svg`
+- `artifacts/training/trl-smollm2/training_summary.json`
+
+The Colab-friendly notebook for the same flow is [https://colab.research.google.com/github/krushna1221/CyberSOC/blob/main/training/cybersoc_trl_minimal_colab.ipynb](https://colab.research.google.com/github/krushna1221/CyberSOC/blob/main/training/cybersoc_trl_minimal_colab.ipynb).
+
+## Results and Training Evidence
+
+These are the slots judges expect to see filled after your real onsite run:
+
+- `training_loss.png`: learning curve from the HF TRL run
+- `score_comparison.png`: baseline vs trained average task score
+- `training_summary.json`: per-task before/after scores
+- short caption explaining what improved and why
+
+Current repo status:
+
+- training pipeline files are present
+- baseline evaluation is present
+- final onsite training artifacts still need to be generated and linked
+
 ## Project Layout
 
 ```text
@@ -222,6 +296,7 @@ The frontend is connected to the real API and supports:
 |   |-- environment.py
 |   |-- graders.py
 |   |-- models.py
+|   |-- training.py
 |   `-- scenarios.py
 |-- server/
 |   |-- app.py
@@ -229,8 +304,18 @@ The frontend is connected to the real API and supports:
 |       |-- cybersoc.html
 |       |-- soc.css
 |       `-- soc.js
+|-- training/
+|   |-- cybersoc_trl_minimal_colab.ipynb
+|   |-- generate_sft_dataset.py
+|   |-- README.md
+|   `-- train_trl_sft.py
+|-- artifacts/
+|   `-- training/
+|       `-- README.md
 |-- tests/
 |   |-- test_api.py
+|   |-- test_datasets.py
+|   |-- test_training.py
 |   |-- test_environment.py
 |   |-- test_inference.py
 |   `-- test_spec.py
@@ -246,6 +331,12 @@ Install dependencies:
 
 ```bash
 python -m pip install -e ".[dev]"
+```
+
+Install the optional training extras:
+
+```bash
+python -m pip install -e ".[dev,training]"
 ```
 
 Run tests:
@@ -322,6 +413,16 @@ Current local checks:
 - `python inference.py --policy heuristic`
 - local HTTP smoke tests for `/`, `/api/status`, and frontend assets
 - `docker build` and `docker run`
+
+## Storytelling Assets
+
+Before final judging, add at least one of these links here:
+
+- YouTube demo under 2 minutes: [https://www.youtube.com/watch?v=R-3gXeFsGPM](https://www.youtube.com/watch?v=R-3gXeFsGPM)
+- Hugging Face mini-blog: optional, not provided yet
+- Slide deck / presentation: optional, not provided yet
+
+Keep videos external; do not commit large video files into this repo.
 
 ## Summary
 
