@@ -44,9 +44,9 @@ The project implements an OpenEnv-style environment with:
 - [x] Baseline inference runner and deterministic graders
 - [x] Minimal HF TRL Colab notebook and training scripts
 - [x] Public YouTube demo link
-- [ ] Upload final reward/loss plots from a real training run
+- [x] Upload reward/loss plots from a real training run
 - [ ] Link your Hugging Face mini-blog or slide deck if you create one
-- [ ] Replace placeholder training results below with your onsite run artifacts
+- [x] Replace placeholder training results below with the latest available artifacts
 
 ## Why This Environment Matters
 
@@ -262,26 +262,32 @@ python training/train_trl_sft.py \
 
 4. Commit or link the generated artifacts:
 
-- `artifacts/training/trl-smollm2/training_loss.png` or `.svg`
-- `artifacts/training/trl-smollm2/score_comparison.png` or `.svg`
-- `artifacts/training/trl-smollm2/training_summary.json`
+- `artifacts/training/training_loss.png` or `.svg`
+- `artifacts/training/score_comparison.png` or `.svg`
+- `artifacts/training/training_summary.json`
 
 The Colab-friendly notebook for the same flow is [https://colab.research.google.com/github/krushna1221/CyberSOC/blob/main/training/cybersoc_trl_minimal_colab.ipynb](https://colab.research.google.com/github/krushna1221/CyberSOC/blob/main/training/cybersoc_trl_minimal_colab.ipynb).
 
 ## Results and Training Evidence
 
-These are the slots judges expect to see filled after your real onsite run:
+Current checked-in training artifacts:
 
-- `training_loss.png`: learning curve from the HF TRL run
-- `score_comparison.png`: baseline vs trained average task score
-- `training_summary.json`: per-task before/after scores
-- short caption explaining what improved and why
+- [artifacts/training/training_loss.png](artifacts/training/training_loss.png): learning curve from the latest HF TRL run
+- [artifacts/training/score_comparison.png](artifacts/training/score_comparison.png): baseline vs trained comparison
+- [artifacts/training/training_summary.json](artifacts/training/training_summary.json): per-task before/after scores
 
-Current repo status:
+Current latest training run summary:
 
-- training pipeline files are present
-- baseline evaluation is present
-- final onsite training artifacts still need to be generated and linked
+- model: `sshleifer/tiny-gpt2`
+- device: `cuda:Tesla T4`
+- baseline average score: `0.2932`
+- trained average score: `0.2932`
+
+Interpretation:
+
+- this run proves the TRL training and evaluation pipeline executes end to end on GPU
+- the tiny-model smoke run did **not** show measurable reward improvement yet
+- for a stronger final judging package, rerun the same notebook with a stronger model such as `HuggingFaceTB/SmolLM2-135M-Instruct`
 
 ## Project Layout
 

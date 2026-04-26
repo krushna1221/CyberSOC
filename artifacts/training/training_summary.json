@@ -1,0 +1,55 @@
+{
+  "dataset": "artifacts/training/cybersoc_sft_train.jsonl",
+  "model": "sshleifer/tiny-gpt2",
+  "device": "cuda:Tesla T4",
+  "baseline": {
+    "task_results": [
+      {
+        "task_id": "alert-triage-easy",
+        "score": 0.0001,
+        "steps": 5,
+        "terminal_reason": "max_steps_reached"
+      },
+      {
+        "task_id": "incident-containment-medium",
+        "score": 0.2,
+        "steps": 5,
+        "terminal_reason": "data_exfiltration"
+      },
+      {
+        "task_id": "soc-optimization-hard",
+        "score": 0.6796,
+        "steps": 4,
+        "terminal_reason": "data_exfiltration"
+      }
+    ],
+    "average_score": 0.2932
+  },
+  "trained": {
+    "task_results": [
+      {
+        "task_id": "alert-triage-easy",
+        "score": 0.0001,
+        "steps": 5,
+        "terminal_reason": "max_steps_reached"
+      },
+      {
+        "task_id": "incident-containment-medium",
+        "score": 0.2,
+        "steps": 5,
+        "terminal_reason": "data_exfiltration"
+      },
+      {
+        "task_id": "soc-optimization-hard",
+        "score": 0.6796,
+        "steps": 4,
+        "terminal_reason": "data_exfiltration"
+      }
+    ],
+    "average_score": 0.2932
+  },
+  "artifacts": {
+    "training_loss": "artifacts/training/trl-fast/training_loss.png",
+    "score_comparison": "artifacts/training/trl-fast/score_comparison.png"
+  }
+}
