@@ -53,7 +53,7 @@ def _build_env_client(env_base_url: str | None):
 
 
 def _format_messages(messages: list[dict[str, str]], tokenizer) -> str:
-    if hasattr(tokenizer, "apply_chat_template"):
+    if hasattr(tokenizer, "apply_chat_template") and getattr(tokenizer, "chat_template", None):
         return tokenizer.apply_chat_template(
             messages,
             tokenize=False,
@@ -75,7 +75,7 @@ def _llm_action(model, tokenizer, observation, max_new_tokens: int) -> CyberSOCA
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": json.dumps(build_prompt_payload(observation), indent=2)},
     ]
-    if hasattr(tokenizer, "apply_chat_template"):
+    if hasattr(tokenizer, "apply_chat_template") and getattr(tokenizer, "chat_template", None):
         prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     else:
         prompt = "\n".join(f"{message['role'].upper()}: {message['content']}" for message in messages)
