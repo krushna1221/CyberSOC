@@ -79,7 +79,18 @@ def _llm_action(model, tokenizer, observation, max_new_tokens: int) -> CyberSOCA
         prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     else:
         prompt = "\n".join(f"{message['role'].upper()}: {message['content']}" for message in messages)
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    tokenizer_limit = getattr(tokenizer, "model_max_length", None)
+    model_limit = getattr(model.config, "max_position_embeddings", None) or getattr(model.config, "n_positions", None)
+    context_limit = model_limit or tokenizer_limit or 1024
+    if context_limit and context_limit > 100000:
+        context_limit = model_limit or 1024
+    usable_prompt_tokens = max(128, int(context_limit) - max_new_tokens - 8)
+    inputs = tokenizer(
+        prompt,
+        return_tensors="pt",
+        truncation=True,
+        max_length=usable_prompt_tokens,
+    ).to(model.device)
     with torch.no_grad():
         generated = model.generate(
             **inputs,
